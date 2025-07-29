@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1Pixel - Nginx Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#3B82F6',
+                    secondary: '#10B981',
+                    danger: '#EF4444',
+                    dark: '#1E293B',
+                },
+                fontFamily: {
+                    sans: ['Inter', 'system-ui', 'sans-serif'],
+                },
+            }
+        }
+    }
+    </script>
+    <style type="text/tailwindcss">
+    @layer utilities {
+        .content-auto {
+            content-visibility: auto;
+        }
+        .btn-effect {
+            @apply transition-all duration-200 hover:shadow-lg transform hover:-translate-y-0.5;
+        }
+    }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-dark mb-2">
+                <span class="text-primary">1</span>pixel
+            </h1>
+            <p class="text-gray-600 text-lg">Nginx Management Tool</p>
+            <div class="mt-4 flex justify-center gap-2" id="auth-buttons">
+                <button id="login-btn" class="bg-primary text-white py-2 px-4 rounded-lg btn-effect">
+                    <i class="fa fa-sign-in mr-1"></i> Login
+                </button>
+                <button id="register-btn" class="bg-secondary text-white py-2 px-4 rounded-lg btn-effect">
+                    <i class="fa fa-user-plus mr-1"></i> Register
+                </button>
+            </div>
+            <div class="mt-4 hidden" id="user-menu">
+                <div class="relative inline-block">
+                    <button id="user-btn" class="flex items-center gap-2 bg-gray-100 text-dark py-2 px-4 rounded-lg btn-effect">
+                        <i class="fa fa-user-circle"></i>
+                        <span id="username-display">User</span>
+                        <i class="fa fa-caret-down"></i>
+                    </button>
+                    <div id="user-dropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 hidden z-10">
+                        <button id="mfa-btn" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
+                            <i class="fa fa-shield mr-2"></i> <span id="mfa-btn-text">Enable MFA</span>
+                        </button>
+                        <button id="logout-btn" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
+                            <i class="fa fa-sign-out mr-2"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-xl font-semibold text-dark">Nginx Status</h2>
+                    <p class="text-gray-500" id="status-text">Checking status...</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex items-center gap-3" id="status-controls">
+                    <div id="status-indicator">
+                    <span class="inline-block w-3 h-3 rounded-full bg-yellow-400"></span>
+                    </div>
+                    <button id="refresh-status-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
+                    <i class="fa fa-refresh mr-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="start-btn" class="bg-secondary text-white py-3 px-4 rounded-lg btn-effect flex items-center justify-center">
+                    <i class="fa fa-play mr-2"></i> Start
+                </button>
+                <button id="stop-btn" class="bg-danger text-white py-3 px-4 rounded-lg btn-effect flex items-center justify-center">
+                    <i class="fa fa-stop mr-2"></i> Stop
+                </button>
+                <button id="reload-btn" class="bg-primary text-white py-3 px-4 rounded-lg btn-effect flex items-center justify-center">
+                    <i class="fa fa-refresh mr-2"></i> Reload
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-dark mb-4">Nginx Configuration</h2>
+            <div class="mb-4">
+                <label for="nginx-path" class="block text-gray-700 mb-2">Nginx Installation Path</label>
+                <input type="text" id="nginx-path" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="e.g. C:\nginx-1.24.0">
+            </div>
+            <button id="save-path-btn" class="bg-primary text-white py-2 px-4 rounded-lg btn-effect">
+                <i class="fa fa-save mr-1"></i> Save Path
+            </button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-dark">Nginx Configuration Editor</h2>
+                <button id="refresh-config-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
+                    <i class="fa fa-refresh mr-1"></i> Refresh
+                </button>
+            </div>
+            <div class="mb-4">
+                <div id="editor" class="bg-gray-50 rounded-lg h-64 w-full"></div>
+            </div>
+            <div class="flex gap-2">
+                <button id="save-config-btn" class="bg-primary text-white py-2 px-4 rounded-lg btn-effect">
+                    <i class="fa fa-save mr-1"></i> Save Configuration
+                </button>
+                <button id="reload-config-btn" class="bg-secondary text-white py-2 px-4 rounded-lg btn-effect">
+                    <i class="fa fa-refresh mr-1"></i> Reload Nginx
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-dark mb-4">Operation Log</h2>
+            <div id="log-area" class="bg-gray-50 p-4 rounded-lg h-40 overflow-y-auto text-sm text-gray-700 font-mono">
+                <p>Waiting for operations...</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-dark">Nginx Access Logs</h2>
+                <button id="refresh-logs-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
+                    <i class="fa fa-refresh mr-1"></i> Refresh
+                </button>
+            </div>
+            <div id="nginx-log-area" class="bg-gray-50 p-4 rounded-lg h-40 overflow-y-auto text-sm text-gray-700 font-mono">
+                <p>Loading Nginx logs...</p>
+            </div>
+        </div>
+
+        <!-- Login Modal -->
+        <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4 transform transition-all duration-300 scale-95 opacity-0" id="login-modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-dark">Login</h2>
+                    <button id="close-login-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="login-form" class="space-y-4">
+                    <div id="login-error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong class="font-bold">Error: </strong>
+                        <span class="block sm:inline" id="login-error-message"></span>
+                    </div>
+                    <div>
+                        <label for="login-username" class="block text-gray-700 mb-2">Username</label>
+                        <input type="text" id="login-username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Enter your username" required>
+                    </div>
+                    <div>
+                        <label for="login-password" class="block text-gray-700 mb-2">Password</label>
+                        <input type="password" id="login-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Enter your password" required>
+                    </div>
+                    <div>
+                        <label for="login-mfa-code" class="block text-gray-700 mb-2">MFA Code</label>
+                        <input type="text" id="login-mfa-code" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Enter 6-digit MFA code" maxlength="6">
+                    </div>
+                    <div id="login-loading" class="hidden flex items-center justify-center w-full bg-gray-200 text-gray-500 py-3 px-4 rounded-lg">
+                    <i class="fa fa-spinner fa-spin mr-2"></i> Logging in...
+                </div>
+                <button type="submit" class="w-full bg-primary text-white py-3 px-4 rounded-lg btn-effect" id="login-submit-btn">
+                    <i class="fa fa-sign-in mr-2"></i> Login
+                </button>
+                </form>
+                <p class="mt-4 text-center text-gray-600">
+                    Don't have an account? <button id="switch-to-register" class="text-primary hover:underline">Register</button>
+                </p>
+            </div>
+        </div>
+
+        <!-- Register Modal -->
+        <div id="register-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4 transform transition-all duration-300 scale-95 opacity-0" id="register-modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-dark">Register</h2>
+                    <button id="close-register-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="register-form" class="space-y-4">
+                    <div id="register-error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong class="font-bold">Error: </strong>
+                        <span class="block sm:inline" id="register-error-message"></span>
+                    </div>
+                    <div>
+                        <label for="register-username" class="block text-gray-700 mb-2">Username</label>
+                        <input type="text" id="register-username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Choose a username" required>
+                    </div>
+                    <div>
+                        <label for="register-password" class="block text-gray-700 mb-2">Password</label>
+                        <input type="password" id="register-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Choose a password" required>
+                    </div>
+                    <div>
+                        <label for="register-confirm-password" class="block text-gray-700 mb-2">Confirm Password</label>
+                        <input type="password" id="register-confirm-password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Confirm your password" required>
+                    </div>
+                    <button type="submit" class="w-full bg-secondary text-white py-3 px-4 rounded-lg btn-effect">
+                        <i class="fa fa-user-plus mr-2"></i> Register
+                    </button>
+                </form>
+                <p class="mt-4 text-center text-gray-600">
+                    Already have an account? <button id="switch-to-login" class="text-primary hover:underline">Login</button>
+                </p>
+            </div>
+        </div>
+
+        <!-- MFA Modal -->
+        <div id="mfa-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4 transform transition-all duration-300 scale-95 opacity-0" id="mfa-modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-dark">Enable MFA</h2>
+                    <button id="close-mfa-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="text-center">
+                        <p class="mb-4">Scan this QR code with your authenticator app</p>
+                        <div class="bg-white p-4 inline-block rounded-lg border border-gray-200 mb-4">
+                            <canvas id="qrcode" class="w-48 h-48 bg-gray-100 mx-auto"></canvas>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-4">Or enter this code manually: <span id="mfa-secret" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p>
+                    </div>
+                    <div>
+                        <label for="mfa-code" class="block text-gray-700 mb-2">Enter verification code</label>
+                        <input type="text" id="mfa-code" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="6-digit code" required maxlength="6">
+                    </div>
+                    <button id="enable-mfa-btn" class="w-full bg-primary text-white py-3 px-4 rounded-lg btn-effect">
+                        <i class="fa fa-shield mr-2"></i> Enable MFA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disable MFA Modal -->
+    <div id="disable-mfa-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4 transform transition-all duration-300 scale-95 opacity-0" id="disable-mfa-modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-dark">Disable MFA</h2>
+                <button id="close-disable-mfa-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <p class="text-gray-700">Are you sure you want to disable Multi-Factor Authentication?</p>
+                <p class="text-red-500 text-sm">Warning: Disabling MFA reduces the security of your account.</p>
+                
+                <div>
+                    <label for="disable-mfa-code" class="block text-gray-700 mb-2">Enter current MFA code to confirm</label>
+                    <input type="text" id="disable-mfa-code" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="6-digit code" required maxlength="6">
+                </div>
+                
+                <button id="confirm-disable-mfa-btn" class="w-full bg-danger text-white py-3 px-4 rounded-lg btn-effect">
+                    <i class="fa fa-shield mr-2"></i> Disable MFA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // 页面加载时检查localStorage中的用户信息
+    document.addEventListener('DOMContentLoaded', function() {
+        const authToken = localStorage.getItem('authToken');
+        const username = localStorage.getItem('username');
+        
+        if (authToken && username) {
+            // 有用户信息，显示用户菜单
+            document.getElementById('auth-buttons').classList.add('hidden');
+            document.getElementById('user-menu').classList.remove('hidden');
+            document.getElementById('username-display').textContent = username;
+            // 检查MFA状态
+            checkMFAStatus();
+        } else {
+            // 无用户信息，显示登录/注册按钮
+            document.getElementById('auth-buttons').classList.remove('hidden');
+            document.getElementById('user-menu').classList.add('hidden');
+        }
+    });
+
+    // 刷新按钮事件处理
+    // Nginx Status 刷新
+    const refreshStatusBtn = document.getElementById('refresh-status-btn');
+    refreshStatusBtn.addEventListener('click', () => {
+        addLog('Refreshing Nginx status...');
+        getNginxStatus();
+    });
+
+    // Nginx Configuration 刷新
+    const refreshConfigBtn = document.getElementById('refresh-config-btn');
+    refreshConfigBtn.addEventListener('click', () => {
+        loadNginxConfig();
+    });
+
+    // Nginx Logs 刷新
+    const refreshLogsBtn = document.getElementById('refresh-logs-btn');
+    refreshLogsBtn.addEventListener('click', () => {
+        addLog('Refreshing Nginx logs...');
+        fetchNginxLogs();
+    });
+
+    // DOM元素
+    const statusText = document.getElementById('status-text');
+    const statusIndicator = document.getElementById('status-indicator');
+    const startBtn = document.getElementById('start-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const reloadBtn = document.getElementById('reload-btn');
+    const nginxPathInput = document.getElementById('nginx-path');
+    const savePathBtn = document.getElementById('save-path-btn');
+    const logArea = document.getElementById('log-area');
+
+    // 更新状态显示
+    function updateStatusIndicator(status) {
+        statusIndicator.innerHTML = '';
+        let indicator, text;
+        
+        switch(status) {
+            case 'running':
+                indicator = '<span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>';
+                text = 'Nginx is running';
+                break;
+            case 'stopped':
+                indicator = '<span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>';
+                text = 'Nginx is stopped';
+                break;
+            default:
+                indicator = '<span class="inline-block w-3 h-3 rounded-full bg-yellow-400"></span>';
+                text = 'Unknown status';
+        }
+        
+        statusIndicator.innerHTML = indicator;
+        statusText.textContent = text;
+    }
+
+    // 添加日志
+    function addLog(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('p');
+        logEntry.innerHTML = `[${timestamp}] ${message}`;
+        logArea.appendChild(logEntry);
+        logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    // 获取Nginx状态
+    function getNginxStatus() {
+        fetch('/api/status')
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw err; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            updateStatusIndicator(data.status);
+        })
+        .catch(error => {
+            addLog(`Error checking status: ${error.error || error.message}`);
+        });
+    }
+
+    // 启动Nginx
+    startBtn.addEventListener('click', () => {
+        fetch('/api/start', { method: 'POST' })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to start Nginx');
+                return response.json();
+            })
+            .then(data => {
+                addLog('Nginx started successfully');
+                getNginxStatus();
+            })
+            .catch(error => {
+                addLog(`Error starting Nginx: ${error.message}`);
+            });
+    });
+
+    // 停止Nginx
+    stopBtn.addEventListener('click', () => {
+        fetch('/api/stop', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                addLog('Nginx stopped successfully');
+                getNginxStatus();
+            })
+            .catch(error => {
+                addLog(`Error stopping Nginx: ${error.message}`);
+            });
+    });
+
+    // 重新加载Nginx配置
+    reloadBtn.addEventListener('click', () => {
+        fetch('/api/reload', { method: 'POST' })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to reload Nginx');
+                return response.json();
+            })
+            .then(data => {
+                addLog('Nginx configuration reloaded');
+                getNginxStatus();
+            })
+            .catch(error => {
+                addLog(`Error reloading Nginx: ${error.message}`);
+            });
+    });
+
+    // 保存Nginx路径
+    savePathBtn.addEventListener('click', () => {
+        const path = nginxPathInput.value.trim();
+        if (!path) {
+            addLog('Please enter a valid Nginx path');
+            return;
+        }
+        
+        fetch('/api/set-path', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: path })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to save path');
+            return response.json();
+        })
+        .then(data => {
+            addLog(`Nginx path updated to: ${data.path}`);
+        })
+        .catch(error => {
+            addLog(`Error saving path: ${error.message}`);
+        });
+    });
+
+    // 获取Nginx日志
+    function fetchNginxLogs() {
+        fetch('/api/logs').then(response => {
+            if (!response.ok) throw new Error('Failed to fetch logs');
+            return response.json();
+        })
+        .then(data => {
+            const logArea = document.getElementById('nginx-log-area');
+            logArea.innerHTML = '';
+            data.logs.forEach(line => {
+                const logEntry = document.createElement('p');
+                logEntry.textContent = line;
+                logArea.appendChild(logEntry);
+            });
+            logArea.scrollTop = logArea.scrollHeight;
+        })
+        .catch(error => {
+            const logArea = document.getElementById('nginx-log-area');
+            logArea.innerHTML = `<p class="text-red-500">Error loading logs: ${error.message}</p>`;
+        });
+    }
+
+    // 初始化Ace编辑器
+    const editor = ace.edit('editor');
+    editor.session.setMode('ace/mode/nginx');
+    editor.setOptions({
+        fontSize: '14px',
+        showPrintMargin: false,
+        highlightActiveLine: true,
+    });
+
+    // 加载Nginx配置
+    function loadNginxConfig() {
+        addLog('Loading Nginx configuration...');
+        fetch('/api/config')
+            .then(response => {
+                if (!response.ok) throw new Error('Config file not found');
+                return response.json();
+            })
+            .then(data => {
+                editor.setValue(data.config);
+                editor.clearSelection();
+                addLog('Nginx configuration loaded successfully');
+            })
+            .catch(error => {
+                addLog(`Error loading configuration: ${error.message}`);
+                editor.setValue('');
+            });
+    }
+
+    // 保存Nginx配置
+    function saveNginxConfig() {
+        const configContent = editor.getValue();
+        addLog('Saving Nginx configuration...');
+        fetch('/api/config/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config: configContent })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to save configuration');
+            return response.json();
+        })
+        .then(data => {
+            addLog('Nginx configuration saved successfully');
+            addLog('Please reload Nginx for changes to take effect');
+        })
+        .catch(error => {
+            addLog(`Error saving configuration: ${error.message}`);
+        });
+    }
+
+    // 认证相关DOM元素
+    const authButtons = document.getElementById('auth-buttons');
+    const userMenu = document.getElementById('user-menu');
+    const usernameDisplay = document.getElementById('username-display');
+    const loginBtn = document.getElementById('login-btn');
+    const registerBtn = document.getElementById('register-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const userBtn = document.getElementById('user-btn');
+    const userDropdown = document.getElementById('user-dropdown');
+    const mfaBtn = document.getElementById('mfa-btn');
+    const mfaSecret = document.getElementById('mfa-secret');
+
+    // 模态框相关DOM元素
+    const loginModal = document.getElementById('login-modal');
+    const loginModalContent = document.getElementById('login-modal-content');
+    const registerModal = document.getElementById('register-modal');
+    const registerModalContent = document.getElementById('register-modal-content');
+    const mfaModal = document.getElementById('mfa-modal');
+    const mfaModalContent = document.getElementById('mfa-modal-content');
+    const closeLoginModal = document.getElementById('close-login-modal');
+    const closeRegisterModal = document.getElementById('close-register-modal');
+    const closeMfaModal = document.getElementById('close-mfa-modal');
+    const switchToRegister = document.getElementById('switch-to-register');
+    const switchToLogin = document.getElementById('switch-to-login');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const loginError = document.getElementById('login-error');
+    const loginErrorMessage = document.getElementById('login-error-message');
+    const loginSubmitBtn = document.getElementById('login-submit-btn');
+    const loginLoading = document.getElementById('login-loading');
+
+    // 禁用MFA模态框相关DOM元素
+    const disableMfaModal = document.getElementById('disable-mfa-modal');
+    const disableMfaModalContent = document.getElementById('disable-mfa-modal-content');
+    const closeDisableMfaModal = document.getElementById('close-disable-mfa-modal');
+    const confirmDisableMfaBtn = document.getElementById('confirm-disable-mfa-btn');
+
+    // 禁用MFA模态框关闭事件
+    closeDisableMfaModal.addEventListener('click', () => {
+        closeModal(disableMfaModal, disableMfaModalContent);
+    });
+
+    // 点击禁用MFA模态框背景关闭模态框
+    disableMfaModal.addEventListener('click', (e) => {
+        if (e.target === disableMfaModal) {
+            closeModal(disableMfaModal, disableMfaModalContent);
+        }
+    });
+
+    // 确认禁用MFA按钮事件
+    confirmDisableMfaBtn.addEventListener('click', () => {
+        const mfaCode = document.getElementById('disable-mfa-code').value;
+        
+        if (mfaCode.length !== 6) {
+            addLog('MFA disable failed: Please enter a valid 6-digit code');
+            return;
+        }
+        
+        addLog('Disabling MFA...');
+        fetch('/api/mfa/disable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: mfaCode })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to disable MFA');
+            return response.json();
+        })
+        .then(data => {
+            addLog('MFA disabled successfully');
+            closeModal(disableMfaModal, disableMfaModalContent);
+            // 更新MFA按钮文本
+            document.getElementById('mfa-btn-text').textContent = 'Enable MFA';
+        })
+        .catch(error => {
+            addLog('MFA disable failed: ' + error.message);
+        });
+    });
+
+    // 模态框动画函数
+    function openModal(modal, modalContent) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            modalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeModal(modal, modalContent) {
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+
+    // 检查认证状态
+    function checkAuthStatus() {
+        const token = localStorage.getItem('authToken');
+        const username = localStorage.getItem('username');
+        if (token && username) {
+            // 已登录
+            authButtons.classList.add('hidden');
+            userMenu.classList.remove('hidden');
+            usernameDisplay.textContent = username;
+            addLog(`Welcome back, ${username}!`);
+        } else {
+            // 未登录
+            authButtons.classList.remove('hidden');
+            userMenu.classList.add('hidden');
+        }
+    }
+
+    // 登录处理
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        const mfaCode = document.getElementById('login-mfa-code').value;
+
+        addLog('Attempting to login...');
+        // 显示加载状态，隐藏错误和提交按钮
+        loginLoading.classList.remove('hidden');
+        loginSubmitBtn.classList.add('hidden');
+        loginError.classList.add('hidden');
+
+        fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, password: password, mfa_code: mfaCode })
+        })
+        .then(response => {
+            // 恢复按钮状态
+            loginLoading.classList.add('hidden');
+            loginSubmitBtn.classList.remove('hidden');
+
+            if (!response.ok) {
+                // 克隆响应以避免流已读取错误
+                const clonedResponse = response.clone();
+                // 处理错误响应 - 先尝试JSON，失败则使用文本
+                return response.json()
+                    .then(err => {
+                        throw new Error(err.message || `HTTP error! status: ${response.status}`);
+                    })
+                    .catch(jsonError => {
+                        // JSON解析失败，尝试获取文本
+                        return clonedResponse.text().then(text => {
+                            throw new Error(text || `HTTP error! status: ${response.status}`);
+                        });
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // 登录成功
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('username', data.username);
+            document.getElementById('auth-buttons').classList.add('hidden');
+            document.getElementById('user-menu').classList.remove('hidden');
+            document.getElementById('username-display').textContent = data.username;
+            closeModal(loginModal, loginModalContent);
+            // 检查MFA状态
+            checkMFAStatus();
+            addLog(`User ${data.username} logged in successfully`);
+        })
+        .catch(error => {
+            // 显示错误信息
+            loginError.classList.remove('hidden');
+            loginErrorMessage.textContent = error.message;
+            addLog(`Login failed: ${error.message}`);
+        });
+    });
+
+    // 注册处理
+    registerForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = document.getElementById('register-username').value;
+        const password = document.getElementById('register-password').value;
+        const confirmPassword = document.getElementById('register-confirm-password').value;
+
+        // 获取注册错误元素
+        const registerError = document.getElementById('register-error');
+        const registerErrorMessage = document.getElementById('register-error-message');
+
+        // 重置错误状态
+        registerError.classList.add('hidden');
+
+        if (password !== confirmPassword) {
+            // 显示错误信息
+            registerError.classList.remove('hidden');
+            registerErrorMessage.textContent = 'Passwords do not match';
+            addLog('Registration failed: Passwords do not match');
+            return;
+        }
+
+        addLog('Attempting to register...');
+        fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, password: password })
+        })
+        .then(response => {
+            if (!response.ok) {
+                // 克隆响应以避免流已读取错误
+                const clonedResponse = response.clone();
+                // 处理错误响应 - 先尝试JSON，失败则使用文本
+                return response.json()
+                    .then(err => {
+                        throw new Error(err.message || `HTTP error! status: ${response.status}`);
+                    })
+                    .catch(jsonError => {
+                        // JSON解析失败，尝试获取文本
+                        return clonedResponse.text().then(text => {
+                            throw new Error(text || `HTTP error! status: ${response.status}`);
+                        });
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            addLog(`Registration successful for ${username}`);
+            closeModal(registerModal, registerModalContent);
+            openModal(loginModal, loginModalContent);
+            // 检查MFA状态
+            checkMFAStatus();
+            document.getElementById('register-username').value = username;
+            registerForm.reset();
+        })
+        .catch(error => {
+            // 显示错误信息
+            registerError.classList.remove('hidden');
+            registerErrorMessage.textContent = error.message;
+            addLog('Registration failed: ' + error.message);
+        });
+    });
+
+    // 注销处理
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('username');
+        checkAuthStatus();
+        userDropdown.classList.add('hidden');
+        addLog('Logged out successfully');
+    });
+
+    // MFA处理
+    mfaBtn.addEventListener('click', () => {
+        // 确保enableMfaBtn已定义
+        const enableMfaBtn = document.getElementById('enable-mfa-btn');
+        if (enableMfaBtn) {
+            // 移除可能存在的旧事件监听器
+            enableMfaBtn.removeEventListener('click', handleMfaEnable);
+            // 添加新的事件监听器
+            enableMfaBtn.addEventListener('click', handleMfaEnable);
+        }
+    });
+
+    // 页面加载时检查MFA状态
+    function checkMFAStatus() {
+        fetch('/api/mfa-status', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const mfaBtnText = document.getElementById('mfa-btn-text');
+            if (data.mfa_status === 'enabled') {
+                mfaBtnText.textContent = 'Disable MFA';
+            } else {
+                mfaBtnText.textContent = 'Enable MFA';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking MFA status:', error);
+        });
+    }
+
+    function handleMfaEnable() {
+        const mfaCode = document.getElementById('mfa-code').value;
+        if (mfaCode.length !== 6) {
+            addLog('MFA setup failed: Please enter a valid 6-digit code');
+            return;
+        }
+        
+        addLog('Verifying MFA code...');
+        fetch('/api/mfa/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: mfaCode })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Invalid MFA code');
+            return response.json();
+        })
+        .then(data => {
+            addLog('MFA enabled successfully');
+            closeModal(mfaModal, mfaModalContent);
+            // 检查MFA状态
+            checkMFAStatus();
+        })
+        .catch(error => {
+            addLog('MFA setup failed: ' + error.message);
+        });
+    }
+
+    // 点击用户按钮显示下拉菜单
+    userBtn.addEventListener('click', () => {
+        userDropdown.classList.toggle('hidden');
+    });
+
+    // 点击页面其他地方关闭下拉菜单
+    document.addEventListener('click', (e) => {
+        if (!userBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+            userDropdown.classList.add('hidden');
+        }
+    });
+
+    // 模态框开关事件
+    loginBtn.addEventListener('click', () => openModal(loginModal, loginModalContent));
+    registerBtn.addEventListener('click', () => openModal(registerModal, registerModalContent));
+    mfaBtn.addEventListener('click', () => {
+        const mfaBtnText = document.getElementById('mfa-btn-text').textContent;
+        
+        if (mfaBtnText === 'Enable MFA') {
+            // 启用MFA逻辑 - 保持现有逻辑
+            addLog('Generating MFA secret...');
+            const qrcodeElement = document.getElementById('qrcode');
+            
+            // 清空之前的二维码
+            qrcodeElement.innerHTML = '';
+            
+            // 从后端获取MFA密钥
+            fetch('/api/mfa/generate', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to generate MFA secret');
+                    return response.json();
+                })
+                .then(data => {
+                    const otpauthUrl = data.otpauth_url;
+                    mfaSecret.textContent = data.secret;
+
+                    // 生成QR码
+                    QRCode.toCanvas(qrcodeElement, otpauthUrl, { width: 192 }, (error) => {
+                        if (error) {
+                            addLog('Error generating QR code: ' + error.message);
+                            console.error('QR Code generation error:', error);
+                        } else {
+                            addLog('QR code generated successfully');
+                        }
+                        // 确保在二维码生成后再打开模态框
+                        openModal(mfaModal, mfaModalContent);
+                    });
+                    // 检查MFA状态
+                    checkMFAStatus();
+                })
+                .catch(error => {
+                    addLog('Error generating MFA secret: ' + error.message);
+                });
+        } else {
+            // 禁用MFA逻辑 - 新添加的逻辑
+            addLog('Preparing to disable MFA...');
+            openModal(disableMfaModal, disableMfaModalContent);
+        }
+    });
+
+    closeLoginModal.addEventListener('click', () => closeModal(loginModal, loginModalContent));
+    closeRegisterModal.addEventListener('click', () => closeModal(registerModal, registerModalContent));
+    closeMfaModal.addEventListener('click', () => closeModal(mfaModal, mfaModalContent));
+
+    // 切换登录/注册表单
+    switchToRegister.addEventListener('click', () => {
+        closeModal(loginModal, loginModalContent);
+        setTimeout(() => openModal(registerModal, registerModalContent), 300);
+    });
+
+    switchToLogin.addEventListener('click', () => {
+        closeModal(registerModal, registerModalContent);
+        setTimeout(() => openModal(loginModal, loginModalContent), 300);
+    });
+
+    // 点击模态框背景关闭模态框
+    loginModal.addEventListener('click', (e) => {
+        if (e.target === loginModal) closeModal(loginModal, loginModalContent);
+    });
+
+    registerModal.addEventListener('click', (e) => {
+        if (e.target === registerModal) closeModal(registerModal, registerModalContent);
+    });
+
+    mfaModal.addEventListener('click', (e) => {
+        if (e.target === mfaModal) closeModal(mfaModal, mfaModalContent);
+    });
+
+    // 添加请求拦截器，为API请求添加认证令牌
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        // 跳过对自身HTML的认证
+        if (url === '/' || url.startsWith('/frontend/')) {
+            return originalFetch(url, options);
+        }
+
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        return originalFetch(url, options).then(response => {
+            if (response.status === 401) {
+                // 未授权，清除本地存储并重新登录
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('username');
+                checkAuthStatus();
+                addLog('Session expired. Please login again.');
+                openModal(loginModal, loginModalContent);
+            }
+            return response;
+        });
+    };
+
+    // 初始化
+    window.addEventListener('load', () => {
+        // 加载Nginx配置
+        loadNginxConfig();
+
+        // 保存配置按钮事件监听
+        document.getElementById('save-config-btn').addEventListener('click', saveNginxConfig);
+
+        // 重新加载Nginx按钮事件监听
+        document.getElementById('reload-config-btn').addEventListener('click', () => {
+            fetch('/api/reload', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to reload Nginx');
+                    return response.json();
+                })
+                .then(data => {
+                    addLog('Nginx configuration reloaded successfully');
+                    getNginxStatus();
+                })
+                .catch(error => {
+                    addLog(`Error reloading Nginx: ${error.message}`);
+                });
+        });
+
+        // 定期检查状态
+        getNginxStatus();
+        // 定期获取Nginx日志
+        fetchNginxLogs();
+        // 可以从配置加载路径，但在这个简化版本中省略
+        addLog('1Pixel Nginx Manager loaded');
+    });
+    </script>
+</body>
+</html>
