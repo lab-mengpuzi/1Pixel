@@ -9,7 +9,7 @@
 
 ## Deploy
 
-Version Control
+Windows 10 -> version
 
 ```plain
 golang-windows 1.21.0
@@ -19,8 +19,10 @@ nginx-windows  1.24.0
 Windows 10 -> run
 
 ```cmd
+C:\Users\Administrator\Downloads\1Pixel>REM Install Dependency
 C:\Users\Administrator\Downloads\1Pixel>go mod tidy
 C:\Users\Administrator\Downloads\1Pixel>
+C:\Users\Administrator\Downloads\1Pixel>REM Run main.go
 C:\Users\Administrator\Downloads\1Pixel>go run main.go
 ```
 
