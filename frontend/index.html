@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>1Pixel - Nginx Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.0/ace.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
     tailwind.config = {
@@ -130,7 +130,7 @@
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
             <h2 class="text-xl font-semibold text-dark mb-4">Operation Log</h2>
             <div id="log-area" class="bg-gray-50 p-4 rounded-lg h-40 overflow-y-auto text-sm text-gray-700 font-mono">
-                <p>Waiting for operations...</p>
+                <p></p>
             </div>
         </div>
 
@@ -142,7 +142,7 @@
                 </button>
             </div>
             <div id="nginx-log-area" class="bg-gray-50 p-4 rounded-lg h-40 overflow-y-auto text-sm text-gray-700 font-mono">
-                <p>Loading Nginx logs...</p>
+                <p></p>
             </div>
         </div>
 
@@ -276,55 +276,6 @@
     </div>
 
     <script>
-    // 页面加载时检查localStorage中的用户信息
-    document.addEventListener('DOMContentLoaded', function() {
-        const authToken = localStorage.getItem('authToken');
-        const username = localStorage.getItem('username');
-        
-        if (authToken && username) {
-            // 有用户信息，显示用户菜单
-            document.getElementById('auth-buttons').classList.add('hidden');
-            document.getElementById('user-menu').classList.remove('hidden');
-            document.getElementById('username-display').textContent = username;
-            // 检查MFA状态
-            checkMFAStatus();
-        } else {
-            // 无用户信息，显示登录/注册按钮
-            document.getElementById('auth-buttons').classList.remove('hidden');
-            document.getElementById('user-menu').classList.add('hidden');
-        }
-    });
-
-    // 刷新按钮事件处理
-    // Nginx Status 刷新
-    const refreshStatusBtn = document.getElementById('refresh-status-btn');
-    refreshStatusBtn.addEventListener('click', () => {
-        const token = localStorage.getItem('authToken');
-        if (!token) return; // 未登录，不发送请求
-
-        addLog('Refreshing Nginx status...');
-        getNginxStatus();
-    });
-
-    // Nginx Configuration 刷新
-    const refreshConfigBtn = document.getElementById('refresh-config-btn');
-    refreshConfigBtn.addEventListener('click', () => {
-        const token = localStorage.getItem('authToken');
-        if (!token) return; // 未登录，不发送请求
-
-        loadNginxConfig();
-    });
-
-    // Nginx Logs 刷新
-    const refreshLogsBtn = document.getElementById('refresh-logs-btn');
-    refreshLogsBtn.addEventListener('click', () => {
-        const token = localStorage.getItem('authToken');
-        if (!token) return; // 未登录，不发送请求
-
-        addLog('Refreshing Nginx logs...');
-        fetchNginxLogs();
-    });
-
     // DOM元素
     const statusText = document.getElementById('status-text');
     const statusIndicator = document.getElementById('status-indicator');
@@ -334,6 +285,89 @@
     const nginxPathInput = document.getElementById('nginx-path');
     const savePathBtn = document.getElementById('save-path-btn');
     const logArea = document.getElementById('log-area');
+    const nginxLogArea = document.getElementById('nginx-log-area');
+    const disableMfaCode = document.getElementById('disable-mfa-code');
+    const mfaBtnText = document.getElementById('mfa-btn-text');
+    const loginUsername = document.getElementById('login-username');
+    const loginPassword = document.getElementById('login-password');
+    const loginMfaCode = document.getElementById('login-mfa-code');
+    const registerUsername = document.getElementById('register-username');
+    const registerPassword = document.getElementById('register-password');
+    const registerConfirmPassword = document.getElementById('register-confirm-password');
+    const registerError = document.getElementById('register-error');
+    const registerErrorMessage = document.getElementById('register-error-message');
+    const enableMfaBtn = document.getElementById('enable-mfa-btn');
+    const mfaCodeElement = document.getElementById('mfa-code');
+    const qrcodeElement = document.getElementById('qrcode');
+
+    // 认证相关DOM元素
+    const authButtons = document.getElementById('auth-buttons');
+    const userMenu = document.getElementById('user-menu');
+    const usernameDisplay = document.getElementById('username-display');
+    const loginBtn = document.getElementById('login-btn');
+    const registerBtn = document.getElementById('register-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const userBtn = document.getElementById('user-btn');
+    const userDropdown = document.getElementById('user-dropdown');
+    const mfaBtn = document.getElementById('mfa-btn');
+    const mfaSecret = document.getElementById('mfa-secret');
+
+    // 模态框相关DOM元素
+    const loginModal = document.getElementById('login-modal');
+    const loginModalContent = document.getElementById('login-modal-content');
+    const registerModal = document.getElementById('register-modal');
+    const registerModalContent = document.getElementById('register-modal-content');
+    const mfaModal = document.getElementById('mfa-modal');
+    const mfaModalContent = document.getElementById('mfa-modal-content');
+    const closeLoginModal = document.getElementById('close-login-modal');
+    const closeRegisterModal = document.getElementById('close-register-modal');
+    const closeMfaModal = document.getElementById('close-mfa-modal');
+    const switchToRegister = document.getElementById('switch-to-register');
+    const switchToLogin = document.getElementById('switch-to-login');
+    const loginForm = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+    const loginErrorMessage = document.getElementById('login-error-message');
+    const loginSubmitBtn = document.getElementById('login-submit-btn');
+    const loginLoading = document.getElementById('login-loading');
+    const registerForm = document.getElementById('register-form');
+    const saveConfigBtn = document.getElementById('save-config-btn');
+
+    // 禁用MFA模态框相关DOM元素
+    const disableMfaModal = document.getElementById('disable-mfa-modal');
+    const disableMfaModalContent = document.getElementById('disable-mfa-modal-content');
+    const closeDisableMfaModal = document.getElementById('close-disable-mfa-modal');
+    const confirmDisableMfaBtn = document.getElementById('confirm-disable-mfa-btn');
+
+    // 刷新按钮
+    const refreshStatusBtn = document.getElementById('refresh-status-btn');
+    const refreshConfigBtn = document.getElementById('refresh-config-btn');
+    const refreshLogsBtn = document.getElementById('refresh-logs-btn');
+
+    // 刷新状态
+    refreshStatusBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
+        addLog('Refreshing Nginx status...');
+        getNginxStatus();
+    });
+
+    // 刷新配置
+    refreshConfigBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
+        loadNginxConfig();
+    });
+
+    // 刷新日志
+    refreshLogsBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
+        addLog('Refreshing Nginx logs...');
+        fetchNginxLogs();
+    });
 
     // 更新状态显示
     function updateStatusIndicator(status) {
@@ -486,18 +520,16 @@
             return fetchThenResponse(response);
         })
         .then(data => {
-            const logArea = document.getElementById('nginx-log-area');
-            logArea.innerHTML = '';
+            nginxLogArea.innerHTML = '';
             data.logs.forEach(line => {
                 const logEntry = document.createElement('p');
                 logEntry.textContent = line;
-                logArea.appendChild(logEntry);
+                nginxLogArea.appendChild(logEntry);
             });
-            logArea.scrollTop = logArea.scrollHeight;
+            nginxLogArea.scrollTop = nginxLogArea.scrollHeight;
         })
         .catch(error => {
-            const logArea = document.getElementById('nginx-log-area');
-            logArea.innerHTML = `<p class="text-red-500">Error loading logs: ${error.message}</p>`;
+            nginxLogArea.innerHTML = `<p class="text-red-500">Error loading logs: ${error.message}</p>`;
             addLog(`${error.message}`);
         });
     }
@@ -556,44 +588,6 @@
         });
     }
 
-    // 认证相关DOM元素
-    const authButtons = document.getElementById('auth-buttons');
-    const userMenu = document.getElementById('user-menu');
-    const usernameDisplay = document.getElementById('username-display');
-    const loginBtn = document.getElementById('login-btn');
-    const registerBtn = document.getElementById('register-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const userBtn = document.getElementById('user-btn');
-    const userDropdown = document.getElementById('user-dropdown');
-    const mfaBtn = document.getElementById('mfa-btn');
-    const mfaSecret = document.getElementById('mfa-secret');
-
-    // 模态框相关DOM元素
-    const loginModal = document.getElementById('login-modal');
-    const loginModalContent = document.getElementById('login-modal-content');
-    const registerModal = document.getElementById('register-modal');
-    const registerModalContent = document.getElementById('register-modal-content');
-    const mfaModal = document.getElementById('mfa-modal');
-    const mfaModalContent = document.getElementById('mfa-modal-content');
-    const closeLoginModal = document.getElementById('close-login-modal');
-    const closeRegisterModal = document.getElementById('close-register-modal');
-    const closeMfaModal = document.getElementById('close-mfa-modal');
-    const switchToRegister = document.getElementById('switch-to-register');
-    const switchToLogin = document.getElementById('switch-to-login');
-    const loginForm = document.getElementById('login-form');
-    const loginError = document.getElementById('login-error');
-    const loginErrorMessage = document.getElementById('login-error-message');
-    const loginSubmitBtn = document.getElementById('login-submit-btn');
-    const loginLoading = document.getElementById('login-loading');
-    const registerForm = document.getElementById('register-form');
-    const saveConfigBtn = document.getElementById('save-config-btn');
-
-    // 禁用MFA模态框相关DOM元素
-    const disableMfaModal = document.getElementById('disable-mfa-modal');
-    const disableMfaModalContent = document.getElementById('disable-mfa-modal-content');
-    const closeDisableMfaModal = document.getElementById('close-disable-mfa-modal');
-    const confirmDisableMfaBtn = document.getElementById('confirm-disable-mfa-btn');
-
     // 禁用MFA模态框关闭事件
     closeDisableMfaModal.addEventListener('click', () => {
         closeModal(disableMfaModal, disableMfaModalContent);
@@ -611,13 +605,13 @@
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
-        const mfaCode = document.getElementById('disable-mfa-code').value;
-        
+        const mfaCode = disableMfaCode.value;
+
         if (mfaCode.length !== 6) {
             addLog('MFA disable failed: Please enter a valid 6-digit code');
             return;
         }
-        
+
         addLog('Disabling MFA...');
         fetch('/api/mfa/disable', {
             method: 'POST',
@@ -628,10 +622,10 @@
             return fetchThenResponse(response);
         })
         .then(data => {
-            addLog('MFA disabled successfully');
             closeModal(disableMfaModal, disableMfaModalContent);
             // 更新MFA按钮文本
-            document.getElementById('mfa-btn-text').textContent = 'Enable MFA';
+            mfaBtnText.textContent = 'Enable MFA';
+            addLog('MFA disabled successfully');
         })
         .catch(error => {
             addLog(`${error.message}`);
@@ -669,15 +663,17 @@
             // 未登录
             authButtons.classList.remove('hidden');
             userMenu.classList.add('hidden');
+            // 弹出注册模态框
+            openModal(registerModal, registerModalContent);
         }
     }
 
     // 登录处理
     loginForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        const username = document.getElementById('login-username').value;
-        const password = document.getElementById('login-password').value;
-        const mfaCode = document.getElementById('login-mfa-code').value;
+        const username = loginUsername.value;
+        const password = loginPassword.value;
+        const mfaCode = loginMfaCode.value;
 
         addLog('Attempting to login...');
         // 显示加载状态，隐藏错误和提交按钮
@@ -701,9 +697,9 @@
             // 登录成功
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('username', data.username);
-            document.getElementById('auth-buttons').classList.add('hidden');
-            document.getElementById('user-menu').classList.remove('hidden');
-            document.getElementById('username-display').textContent = data.username;
+            authButtons.classList.add('hidden');
+            userMenu.classList.remove('hidden');
+            usernameDisplay.textContent = data.username;
             closeModal(loginModal, loginModalContent);
             // 检查MFA状态
             checkMFAStatus();
@@ -720,13 +716,9 @@
     // 注册处理
     registerForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const username = document.getElementById('register-username').value;
-        const password = document.getElementById('register-password').value;
-        const confirmPassword = document.getElementById('register-confirm-password').value;
-
-        // 获取注册错误元素
-        const registerError = document.getElementById('register-error');
-        const registerErrorMessage = document.getElementById('register-error-message');
+        const username = registerUsername.value;
+        const password = registerPassword.value;
+        const confirmPassword = registerConfirmPassword.value;
 
         // 重置错误状态
         registerError.classList.add('hidden');
@@ -754,7 +746,7 @@
             openModal(loginModal, loginModalContent);
             // 检查MFA状态
             checkMFAStatus();
-            document.getElementById('register-username').value = username;
+            registerUsername.value = username;
             registerForm.reset();
         })
         .catch(error => {
@@ -765,19 +757,40 @@
         });
     });
 
+    // 检查注册是否可用
+    function checkRegisterAvailability() {
+        fetch('/api/register/available', { method: 'GET' })
+        .then(response => {
+            return fetchThenResponse(response);
+        })
+        .then(data => {
+            if (data.available) {
+                // 注册可用，显示注册按钮
+                registerBtn.classList.remove('hidden');
+            } else {
+                // 注册已关闭，隐藏注册按钮
+                registerBtn.classList.add('hidden');
+            }
+        })
+        .catch(error => {
+            // 请求失败时默认隐藏注册按钮
+            registerBtn.classList.add('hidden');
+            addLog(`${error.message}`);
+        });
+    }
+
     // 注销处理
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('username');
         checkAuthStatus();
+        checkRegisterAvailability();
         userDropdown.classList.add('hidden');
         addLog('Logged out successfully');
     });
 
     // MFA处理
     mfaBtn.addEventListener('click', () => {
-        // 确保enableMfaBtn已定义
-        const enableMfaBtn = document.getElementById('enable-mfa-btn');
         if (enableMfaBtn) {
             // 移除可能存在的旧事件监听器
             enableMfaBtn.removeEventListener('click', handleMfaEnable);
@@ -788,6 +801,9 @@
 
     // 页面加载时检查MFA状态
     function checkMFAStatus() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         fetch('/api/mfa-status', {
             headers: {
                 'Authorization': 'Bearer ' + localStorage.getItem('authToken')
@@ -797,7 +813,6 @@
             return fetchThenResponse(response);
         })
         .then(data => {
-            const mfaBtnText = document.getElementById('mfa-btn-text');
             if (data.mfa_status === 'enabled') {
                 mfaBtnText.textContent = 'Disable MFA';
             } else {
@@ -810,7 +825,8 @@
     }
 
     function handleMfaEnable() {
-        const mfaCode = document.getElementById('mfa-code').value;
+        const mfaCode = mfaCodeElement.value;
+
         if (mfaCode.length !== 6) {
             addLog('MFA setup failed: Please enter a valid 6-digit code');
             return;
@@ -855,42 +871,41 @@
     loginBtn.addEventListener('click', () => openModal(loginModal, loginModalContent));
     registerBtn.addEventListener('click', () => openModal(registerModal, registerModalContent));
     mfaBtn.addEventListener('click', () => {
-        const mfaBtnText = document.getElementById('mfa-btn-text').textContent;
+        const mfaBtnTextContent = mfaBtnTextContent.textContent;
         
-        if (mfaBtnText === 'Enable MFA') {
+        if (mfaBtnTextContent === 'Enable MFA') {
             // 启用MFA逻辑 - 保持现有逻辑
             addLog('Generating MFA secret...');
-            const qrcodeElement = document.getElementById('qrcode');
-            
+
             // 清空之前的二维码
             qrcodeElement.innerHTML = '';
-            
+
             // 从后端获取MFA密钥
             fetch('/api/mfa/generate', { method: 'POST' })
-                .then(response => {
-                    return fetchThenResponse(response);
-                })
-                .then(data => {
-                    const otpauthUrl = data.otpauth_url;
-                    mfaSecret.textContent = data.secret;
-                    
-                    // 生成QR码
-                    QRCode.toCanvas(qrcodeElement, otpauthUrl, { width: 192 }, (error) => {
-                        if (error) {
-                            addLog('Error generating QR code: ' + error.message);
-                            console.error('QR Code generation error:', error);
-                        } else {
-                            addLog('QR code generated successfully');
-                        }
-                        // 确保在二维码生成后再打开模态框
-                        openModal(mfaModal, mfaModalContent);
-                    });
-                    // 检查MFA状态
-                    checkMFAStatus();
-                })
-                .catch(error => {
-                    addLog(`${error.message}`);
+            .then(response => {
+                return fetchThenResponse(response);
+            })
+            .then(data => {
+                const otpauthUrl = data.otpauth_url;
+                mfaSecret.textContent = data.secret;
+                
+                // 生成QR码
+                QRCode.toCanvas(qrcodeElement, otpauthUrl, { width: 192 }, (error) => {
+                    if (error) {
+                        addLog('Error generating QR code: ' + error.message);
+                        console.error('QR Code generation error:', error);
+                    } else {
+                        addLog('QR code generated successfully');
+                    }
+                    // 确保在二维码生成后再打开模态框
+                    openModal(mfaModal, mfaModalContent);
                 });
+                // 检查MFA状态
+                checkMFAStatus();
+            })
+            .catch(error => {
+                addLog(`${error.message}`);
+            });
         } else {
             // 禁用MFA逻辑 - 新添加的逻辑
             addLog('Preparing to disable MFA...');
@@ -953,6 +968,27 @@
             return response;
         });
     };
+
+    // 页面加载时检查localStorage中的用户信息
+    document.addEventListener('DOMContentLoaded', function() {
+        const authToken = localStorage.getItem('authToken');
+        const username = localStorage.getItem('username');
+        
+        if (authToken && username) {
+            // 有用户信息，显示用户菜单
+            authButtons.classList.add('hidden');
+            userMenu.classList.remove('hidden');
+            usernameDisplay.textContent = username;
+            // 检查MFA状态
+            checkMFAStatus();
+        } else {
+            // 无用户信息，显示登录/注册按钮
+            authButtons.classList.remove('hidden');
+            userMenu.classList.add('hidden');
+            // 检查注册是否可用
+            checkRegisterAvailability();
+        }
+    });
 
     // 初始化
     window.addEventListener('load', () => {
