@@ -124,9 +124,6 @@
                 <button id="save-config-btn" class="bg-primary text-white py-2 px-4 rounded-lg btn-effect">
                     <i class="fa fa-save mr-1"></i> Save Configuration
                 </button>
-                <button id="reload-config-btn" class="bg-secondary text-white py-2 px-4 rounded-lg btn-effect">
-                    <i class="fa fa-refresh mr-1"></i> Reload Nginx
-                </button>
             </div>
         </div>
 
@@ -302,6 +299,9 @@
     // Nginx Status 刷新
     const refreshStatusBtn = document.getElementById('refresh-status-btn');
     refreshStatusBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         addLog('Refreshing Nginx status...');
         getNginxStatus();
     });
@@ -309,12 +309,18 @@
     // Nginx Configuration 刷新
     const refreshConfigBtn = document.getElementById('refresh-config-btn');
     refreshConfigBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         loadNginxConfig();
     });
 
     // Nginx Logs 刷新
     const refreshLogsBtn = document.getElementById('refresh-logs-btn');
     refreshLogsBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         addLog('Refreshing Nginx logs...');
         fetchNginxLogs();
     });
@@ -363,6 +369,9 @@
 
     // 获取Nginx状态
     function getNginxStatus() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         fetch('/api/status')
         .then(response => {
             if (!response.ok) {
@@ -374,63 +383,93 @@
             updateStatusIndicator(data.status);
         })
         .catch(error => {
-            addLog(`Error checking status: ${error.error || error.message}`);
+            addLog(`Error checking status: ${error.message}`);
         });
     }
 
     // 启动Nginx
     startBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         fetch('/api/start', { method: 'POST' })
-            .then(response => {
-                if (!response.ok) throw new Error('Failed to start Nginx');
-                return response.json();
-            })
-            .then(data => {
-                addLog('Nginx started successfully');
-                getNginxStatus();
-            })
-            .catch(error => {
-                addLog(`Error starting Nginx: ${error.message}`);
-            });
+        .then(response => {
+            if (!response.ok) {
+                return response.text()
+                .then(text => {
+                    throw new Error(`${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            addLog('Nginx started successfully');
+            getNginxStatus();
+        })
+        .catch(error => {
+            addLog(`${error.message}`);
+        });
     });
 
     // 停止Nginx
     stopBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         fetch('/api/stop', { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                addLog('Nginx stopped successfully');
-                getNginxStatus();
-            })
-            .catch(error => {
-                addLog(`Error stopping Nginx: ${error.message}`);
-            });
+        .then(response => {
+            if (!response.ok) {
+                return response.text()
+                .then(text => {
+                    throw new Error(`${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            addLog('Nginx stopped successfully');
+            getNginxStatus();
+        })
+        .catch(error => {
+            addLog(`${error.message}`);
+        });
     });
 
     // 重新加载Nginx配置
     reloadBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         fetch('/api/reload', { method: 'POST' })
-            .then(response => {
-                if (!response.ok) throw new Error('Failed to reload Nginx');
-                return response.json();
-            })
-            .then(data => {
-                addLog('Nginx configuration reloaded');
-                getNginxStatus();
-            })
-            .catch(error => {
-                addLog(`Error reloading Nginx: ${error.message}`);
-            });
+        .then(response => {
+            if (!response.ok) {
+                return response.text()
+                .then(text => {
+                    throw new Error(`${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            addLog('Nginx configuration reloaded successfully');
+            getNginxStatus();
+        })
+        .catch(error => {
+            addLog(`${error.message}`);
+        });
     });
 
     // 保存Nginx路径
     savePathBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         const path = nginxPathInput.value.trim();
         if (!path) {
             addLog('Please enter a valid Nginx path');
             return;
         }
-        
+
         fetch('/api/set-path', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -450,6 +489,9 @@
 
     // 获取Nginx日志
     function fetchNginxLogs() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         fetch('/api/logs').then(response => {
             if (!response.ok) throw new Error('Failed to fetch logs');
             return response.json();
@@ -481,25 +523,31 @@
 
     // 加载Nginx配置
     function loadNginxConfig() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         addLog('Loading Nginx configuration...');
         fetch('/api/config')
-            .then(response => {
-                if (!response.ok) throw new Error('Config file not found');
-                return response.json();
-            })
-            .then(data => {
-                editor.setValue(data.config);
-                editor.clearSelection();
-                addLog('Nginx configuration loaded successfully');
-            })
-            .catch(error => {
-                addLog(`Error loading configuration: ${error.message}`);
-                editor.setValue('');
-            });
+        .then(response => {
+            if (!response.ok) throw new Error('Config file not found');
+            return response.json();
+        })
+        .then(data => {
+            editor.setValue(data.config);
+            editor.clearSelection();
+            addLog('Nginx configuration loaded successfully');
+        })
+        .catch(error => {
+            addLog(`Error loading configuration: ${error.message}`);
+            editor.setValue('');
+        });
     }
 
     // 保存Nginx配置
     function saveNginxConfig() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         const configContent = editor.getValue();
         addLog('Saving Nginx configuration...');
         fetch('/api/config/save', {
@@ -545,11 +593,12 @@
     const switchToRegister = document.getElementById('switch-to-register');
     const switchToLogin = document.getElementById('switch-to-login');
     const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
     const loginError = document.getElementById('login-error');
     const loginErrorMessage = document.getElementById('login-error-message');
     const loginSubmitBtn = document.getElementById('login-submit-btn');
     const loginLoading = document.getElementById('login-loading');
+    const registerForm = document.getElementById('register-form');
+    const saveConfigBtn = document.getElementById('save-config-btn');
 
     // 禁用MFA模态框相关DOM元素
     const disableMfaModal = document.getElementById('disable-mfa-modal');
@@ -571,6 +620,9 @@
 
     // 确认禁用MFA按钮事件
     confirmDisableMfaBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
         const mfaCode = document.getElementById('disable-mfa-code').value;
         
         if (mfaCode.length !== 6) {
@@ -838,6 +890,9 @@
         }
     });
 
+    // 保存配置按钮事件监听
+    saveConfigBtn.addEventListener('click', saveNginxConfig);
+
     // 模态框开关事件
     loginBtn.addEventListener('click', () => openModal(loginModal, loginModalContent));
     registerBtn.addEventListener('click', () => openModal(registerModal, registerModalContent));
@@ -946,29 +1001,12 @@
         // 加载Nginx配置
         loadNginxConfig();
 
-        // 保存配置按钮事件监听
-        document.getElementById('save-config-btn').addEventListener('click', saveNginxConfig);
-
-        // 重新加载Nginx按钮事件监听
-        document.getElementById('reload-config-btn').addEventListener('click', () => {
-            fetch('/api/reload', { method: 'POST' })
-                .then(response => {
-                    if (!response.ok) throw new Error('Failed to reload Nginx');
-                    return response.json();
-                })
-                .then(data => {
-                    addLog('Nginx configuration reloaded successfully');
-                    getNginxStatus();
-                })
-                .catch(error => {
-                    addLog(`Error reloading Nginx: ${error.message}`);
-                });
-        });
-
         // 定期检查状态
         getNginxStatus();
+
         // 定期获取Nginx日志
         fetchNginxLogs();
+
         // 可以从配置加载路径，但在这个简化版本中省略
         addLog('1Pixel Nginx Manager loaded');
     });
