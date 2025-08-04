@@ -435,6 +435,31 @@ func updateNginxConfig(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 
+// 判断注册是否可用
+func isRegisterAvailable() bool {
+	return len(users) == 0
+}
+
+// API处理函数 - 检查注册是否可用
+func checkRegisterAvailabilityHandler(w http.ResponseWriter, r *http.Request) {
+	// 设置CORS头部，允许跨域请求
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	// 处理OPTIONS请求
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	// 检查注册是否可用
+	available := isRegisterAvailable()
+
+	// 返回JSON响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"available": available})
+}
+
 // API处理函数 - 注册用户
 func registerUser(w http.ResponseWriter, r *http.Request) {
 	var data map[string]string
@@ -446,13 +471,14 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	username, hasUsername := data["username"]
 	password, hasPassword := data["password"]
 
+	// 检查用户名和密码是否存在
 	if !hasUsername || !hasPassword || username == "" || password == "" {
 		http.Error(w, "用户名和密码是必需的", http.StatusBadRequest)
 		return
 	}
 
 	// 检查是否已存在用户数据，如果有则禁止注册
-	if len(users) > 0 {
+	if !isRegisterAvailable() {
 		http.Error(w, "注册已关闭，系统已部署", http.StatusForbidden)
 		return
 	}
@@ -798,8 +824,9 @@ func main() {
 	}
 
 	// 认证相关路由（不需要中间件）
-	http.HandleFunc("/api/register", registerUser)
 	http.HandleFunc("/api/login", loginUser)
+	http.HandleFunc("/api/register", registerUser)
+	http.HandleFunc("/api/register/available", checkRegisterAvailabilityHandler)
 
 	// 受保护的API路由
 	http.HandleFunc("/api/status", authMiddleware(getStatus))
