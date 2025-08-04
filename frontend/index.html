@@ -367,6 +367,17 @@
         logArea.scrollTop = logArea.scrollHeight;
     }
 
+    // 处理fetch响应
+    function fetchThenResponse(response) {
+        if (!response.ok) {
+            return response.text()
+            .then(text => {
+                throw new Error(`${text}`);
+            });
+        }
+        return response.json();
+    }
+
     // 获取Nginx状态
     function getNginxStatus() {
         const token = localStorage.getItem('authToken');
@@ -374,16 +385,13 @@
 
         fetch('/api/status')
         .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw err; });
-            }
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             updateStatusIndicator(data.status);
         })
         .catch(error => {
-            addLog(`Error checking status: ${error.message}`);
+            addLog(`${error.message}`);
         });
     }
 
@@ -394,13 +402,7 @@
 
         fetch('/api/start', { method: 'POST' })
         .then(response => {
-            if (!response.ok) {
-                return response.text()
-                .then(text => {
-                    throw new Error(`${text}`);
-                });
-            }
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             addLog('Nginx started successfully');
@@ -418,13 +420,7 @@
 
         fetch('/api/stop', { method: 'POST' })
         .then(response => {
-            if (!response.ok) {
-                return response.text()
-                .then(text => {
-                    throw new Error(`${text}`);
-                });
-            }
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             addLog('Nginx stopped successfully');
@@ -442,13 +438,7 @@
 
         fetch('/api/reload', { method: 'POST' })
         .then(response => {
-            if (!response.ok) {
-                return response.text()
-                .then(text => {
-                    throw new Error(`${text}`);
-                });
-            }
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             addLog('Nginx configuration reloaded successfully');
@@ -476,14 +466,13 @@
             body: JSON.stringify({ path: path })
         })
         .then(response => {
-            if (!response.ok) throw new Error('Failed to save path');
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             addLog(`Nginx path updated to: ${data.path}`);
         })
         .catch(error => {
-            addLog(`Error saving path: ${error.message}`);
+            addLog(`${error.message}`);
         });
     });
 
@@ -492,9 +481,9 @@
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
-        fetch('/api/logs').then(response => {
-            if (!response.ok) throw new Error('Failed to fetch logs');
-            return response.json();
+        fetch('/api/logs')
+        .then(response => {
+            return fetchThenResponse(response);
         })
         .then(data => {
             const logArea = document.getElementById('nginx-log-area');
@@ -509,6 +498,7 @@
         .catch(error => {
             const logArea = document.getElementById('nginx-log-area');
             logArea.innerHTML = `<p class="text-red-500">Error loading logs: ${error.message}</p>`;
+            addLog(`${error.message}`);
         });
     }
 
@@ -529,8 +519,7 @@
         addLog('Loading Nginx configuration...');
         fetch('/api/config')
         .then(response => {
-            if (!response.ok) throw new Error('Config file not found');
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             editor.setValue(data.config);
@@ -538,8 +527,8 @@
             addLog('Nginx configuration loaded successfully');
         })
         .catch(error => {
-            addLog(`Error loading configuration: ${error.message}`);
             editor.setValue('');
+            addLog(`${error.message}`);
         });
     }
 
@@ -556,15 +545,14 @@
             body: JSON.stringify({ config: configContent })
         })
         .then(response => {
-            if (!response.ok) throw new Error('Failed to save configuration');
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             addLog('Nginx configuration saved successfully');
             addLog('Please reload Nginx for changes to take effect');
         })
         .catch(error => {
-            addLog(`Error saving configuration: ${error.message}`);
+            addLog(`${error.message}`);
         });
     }
 
@@ -637,8 +625,7 @@
             body: JSON.stringify({ code: mfaCode })
         })
         .then(response => {
-            if (!response.ok) throw new Error('Failed to disable MFA');
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             addLog('MFA disabled successfully');
@@ -647,7 +634,7 @@
             document.getElementById('mfa-btn-text').textContent = 'Enable MFA';
         })
         .catch(error => {
-            addLog('MFA disable failed: ' + error.message);
+            addLog(`${error.message}`);
         });
     });
 
@@ -708,22 +695,7 @@
             loginLoading.classList.add('hidden');
             loginSubmitBtn.classList.remove('hidden');
 
-            if (!response.ok) {
-                // 克隆响应以避免流已读取错误
-                const clonedResponse = response.clone();
-                // 处理错误响应 - 先尝试JSON，失败则使用文本
-                return response.json()
-                    .then(err => {
-                        throw new Error(err.message || `HTTP error! status: ${response.status}`);
-                    })
-                    .catch(jsonError => {
-                        // JSON解析失败，尝试获取文本
-                        return clonedResponse.text().then(text => {
-                            throw new Error(text || `HTTP error! status: ${response.status}`);
-                        });
-                });
-            }
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             // 登录成功
@@ -741,7 +713,7 @@
             // 显示错误信息
             loginError.classList.remove('hidden');
             loginErrorMessage.textContent = error.message;
-            addLog(`Login failed: ${error.message}`);
+            addLog(`${error.message}`);
         });
     });
 
@@ -774,22 +746,7 @@
             body: JSON.stringify({ username: username, password: password })
         })
         .then(response => {
-            if (!response.ok) {
-                // 克隆响应以避免流已读取错误
-                const clonedResponse = response.clone();
-                // 处理错误响应 - 先尝试JSON，失败则使用文本
-                return response.json()
-                    .then(err => {
-                        throw new Error(err.message || `HTTP error! status: ${response.status}`);
-                    })
-                    .catch(jsonError => {
-                        // JSON解析失败，尝试获取文本
-                        return clonedResponse.text().then(text => {
-                            throw new Error(text || `HTTP error! status: ${response.status}`);
-                        });
-                });
-            }
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             addLog(`Registration successful for ${username}`);
@@ -804,7 +761,7 @@
             // 显示错误信息
             registerError.classList.remove('hidden');
             registerErrorMessage.textContent = error.message;
-            addLog('Registration failed: ' + error.message);
+            addLog(`${error.message}`);
         });
     });
 
@@ -836,7 +793,9 @@
                 'Authorization': 'Bearer ' + localStorage.getItem('authToken')
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            return fetchThenResponse(response);
+        })
         .then(data => {
             const mfaBtnText = document.getElementById('mfa-btn-text');
             if (data.mfa_status === 'enabled') {
@@ -846,7 +805,7 @@
             }
         })
         .catch(error => {
-            console.error('Error checking MFA status:', error);
+            addLog(`${error.message}`);
         });
     }
 
@@ -864,8 +823,7 @@
             body: JSON.stringify({ code: mfaCode })
         })
         .then(response => {
-            if (!response.ok) throw new Error('Invalid MFA code');
-            return response.json();
+            return fetchThenResponse(response);
         })
         .then(data => {
             addLog('MFA enabled successfully');
@@ -874,7 +832,7 @@
             checkMFAStatus();
         })
         .catch(error => {
-            addLog('MFA setup failed: ' + error.message);
+            addLog(`${error.message}`);
         });
     }
 
@@ -910,13 +868,12 @@
             // 从后端获取MFA密钥
             fetch('/api/mfa/generate', { method: 'POST' })
                 .then(response => {
-                    if (!response.ok) throw new Error('Failed to generate MFA secret');
-                    return response.json();
+                    return fetchThenResponse(response);
                 })
                 .then(data => {
                     const otpauthUrl = data.otpauth_url;
                     mfaSecret.textContent = data.secret;
-
+                    
                     // 生成QR码
                     QRCode.toCanvas(qrcodeElement, otpauthUrl, { width: 192 }, (error) => {
                         if (error) {
@@ -932,7 +889,7 @@
                     checkMFAStatus();
                 })
                 .catch(error => {
-                    addLog('Error generating MFA secret: ' + error.message);
+                    addLog(`${error.message}`);
                 });
         } else {
             // 禁用MFA逻辑 - 新添加的逻辑
@@ -983,7 +940,8 @@
             options.headers['Authorization'] = `Bearer ${token}`;
         }
 
-        return originalFetch(url, options).then(response => {
+        return originalFetch(url, options)
+        .then(response => {
             if (response.status === 401) {
                 // 未授权，清除本地存储并重新登录
                 localStorage.removeItem('authToken');
