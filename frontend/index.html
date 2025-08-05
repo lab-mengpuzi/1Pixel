@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:," type="image/x-icon">
     <title>1Pixel - Nginx Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
@@ -81,7 +82,7 @@
                     <span class="inline-block w-3 h-3 rounded-full bg-yellow-400"></span>
                     </div>
                     <button id="refresh-status-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
-                    <i class="fa fa-refresh mr-1"></i> Refresh
+                        <i class="fa fa-refresh mr-1"></i> Refresh
                     </button>
                 </div>
             </div>
@@ -100,7 +101,12 @@
         </div>
 
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold text-dark mb-4">Nginx Configuration</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-dark">Nginx Configuration</h2>
+                <button id="refresh-path-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
+                    <i class="fa fa-refresh mr-1"></i> Refresh
+                </button>
+            </div>
             <div class="mb-4">
                 <label for="nginx-path" class="block text-gray-700 mb-2">Nginx Installation Path</label>
                 <input type="text" id="nginx-path" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="e.g. C:\nginx-1.24.0">
@@ -128,13 +134,6 @@
         </div>
 
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold text-dark mb-4">Operation Log</h2>
-            <div id="log-area" class="bg-gray-50 p-4 rounded-lg h-40 overflow-y-auto text-sm text-gray-700 font-mono">
-                <p></p>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold text-dark">Nginx Access Logs</h2>
                 <button id="refresh-logs-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
@@ -142,6 +141,13 @@
                 </button>
             </div>
             <div id="nginx-log-area" class="bg-gray-50 p-4 rounded-lg h-40 overflow-y-auto text-sm text-gray-700 font-mono">
+                <p></p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-dark mb-4">Operation Log</h2>
+            <div id="log-area" class="bg-gray-50 p-4 rounded-lg h-40 overflow-y-auto text-sm text-gray-700 font-mono">
                 <p></p>
             </div>
         </div>
@@ -283,6 +289,7 @@
     const stopBtn = document.getElementById('stop-btn');
     const reloadBtn = document.getElementById('reload-btn');
     const nginxPathInput = document.getElementById('nginx-path');
+    const refreshPathBtn = document.getElementById('refresh-path-btn');
     const savePathBtn = document.getElementById('save-path-btn');
     const logArea = document.getElementById('log-area');
     const nginxLogArea = document.getElementById('nginx-log-area');
@@ -352,12 +359,22 @@
         getNginxStatus();
     });
 
+    // 刷新路径
+    refreshPathBtn.addEventListener('click', () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
+        addLog('Refreshing Nginx path...');
+        getNginxPath();
+    });
+
     // 刷新配置
     refreshConfigBtn.addEventListener('click', () => {
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
-        loadNginxConfig();
+        addLog('Refreshing Nginx config...');
+        getNginxConfig();
     });
 
     // 刷新日志
@@ -366,7 +383,7 @@
         if (!token) return; // 未登录，不发送请求
 
         addLog('Refreshing Nginx logs...');
-        fetchNginxLogs();
+        getNginxLogs();
     });
 
     // 更新状态显示
@@ -412,29 +429,12 @@
         return response.json();
     }
 
-    // 获取Nginx状态
-    function getNginxStatus() {
-        const token = localStorage.getItem('authToken');
-        if (!token) return; // 未登录，不发送请求
-
-        fetch('/api/status')
-        .then(response => {
-            return fetchThenResponse(response);
-        })
-        .then(data => {
-            updateStatusIndicator(data.status);
-        })
-        .catch(error => {
-            addLog(`${error.message}`);
-        });
-    }
-
     // 启动Nginx
-    startBtn.addEventListener('click', () => {
+    function startNginx() {
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
-        fetch('/api/start', { method: 'POST' })
+        fetch('/api/nginx/start', { method: 'POST' })
         .then(response => {
             return fetchThenResponse(response);
         })
@@ -445,14 +445,14 @@
         .catch(error => {
             addLog(`${error.message}`);
         });
-    });
+    }
 
     // 停止Nginx
-    stopBtn.addEventListener('click', () => {
+    function stopNginx() {
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
-        fetch('/api/stop', { method: 'POST' })
+        fetch('/api/nginx/stop', { method: 'POST' })
         .then(response => {
             return fetchThenResponse(response);
         })
@@ -463,14 +463,14 @@
         .catch(error => {
             addLog(`${error.message}`);
         });
-    });
+    }
 
     // 重新加载Nginx配置
-    reloadBtn.addEventListener('click', () => {
+    function reloadNginx() {
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
-        fetch('/api/reload', { method: 'POST' })
+        fetch('/api/nginx/reload', { method: 'POST' })
         .then(response => {
             return fetchThenResponse(response);
         })
@@ -481,10 +481,10 @@
         .catch(error => {
             addLog(`${error.message}`);
         });
-    });
+    }
 
     // 保存Nginx路径
-    savePathBtn.addEventListener('click', () => {
+    function updateNginxPath() {
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
@@ -494,7 +494,7 @@
             return;
         }
 
-        fetch('/api/set-path', {
+        fetch('/api/nginx/path/set', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: path })
@@ -508,14 +508,94 @@
         .catch(error => {
             addLog(`${error.message}`);
         });
-    });
+    }
 
-    // 获取Nginx日志
-    function fetchNginxLogs() {
+    // 保存Nginx配置
+    function updateNginxConfig() {
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
-        fetch('/api/logs')
+        const configContent = editor.getValue();
+        addLog('Saving Nginx configuration...');
+        fetch('/api/nginx/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config: configContent })
+        })
+        .then(response => {
+            return fetchThenResponse(response);
+        })
+        .then(data => {
+            addLog('Nginx configuration saved successfully');
+            addLog('Please reload Nginx for changes to take effect');
+        })
+        .catch(error => {
+            addLog(`${error.message}`);
+        });
+    }
+
+    // 获取Nginx状态
+    function getNginxStatus() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
+        fetch('/api/nginx/status')
+        .then(response => {
+            return fetchThenResponse(response);
+        })
+        .then(data => {
+            updateStatusIndicator(data.status);
+        })
+        .catch(error => {
+            addLog(`${error.message}`);
+        });
+    }
+
+    // 加载Nginx配置
+    function getNginxConfig() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
+        addLog('Loading Nginx configuration...');
+        fetch('/api/nginx/config')
+        .then(response => {
+            return fetchThenResponse(response);
+        })
+        .then(data => {
+            editor.setValue(data.config);
+            editor.clearSelection();
+            addLog('Nginx configuration loaded successfully');
+        })
+        .catch(error => {
+            editor.setValue('');
+            addLog(`${error.message}`);
+        });
+    }
+
+    // 添加获取Nginx路径的函数
+    function getNginxPath() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
+        fetch('/api/nginx/path/get')
+        .then(response => {
+            return fetchThenResponse(response);
+        })
+        .then(data => {
+            nginxPathInput.value = data.path;
+            addLog(`Loaded Nginx path: ${data.path}`);
+        })
+        .catch(error => {
+            addLog(`${error.message}`);
+        });
+    }
+
+    // 获取Nginx日志
+    function getNginxLogs() {
+        const token = localStorage.getItem('authToken');
+        if (!token) return; // 未登录，不发送请求
+
+        fetch('/api/nginx/logs')
         .then(response => {
             return fetchThenResponse(response);
         })
@@ -534,74 +614,106 @@
         });
     }
 
-    // 初始化Ace编辑器
-    const editor = ace.edit('editor');
-    editor.session.setMode('ace/mode/nginx');
-    editor.setOptions({
-        fontSize: '14px',
-        showPrintMargin: false,
-        highlightActiveLine: true,
-    });
-
-    // 加载Nginx配置
-    function loadNginxConfig() {
+    // 页面加载时检查MFA状态
+    function getMFAStatus() {
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
-        addLog('Loading Nginx configuration...');
-        fetch('/api/config')
+        fetch('/api/mfa/status', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
+            }
+        })
         .then(response => {
             return fetchThenResponse(response);
         })
         .then(data => {
-            editor.setValue(data.config);
-            editor.clearSelection();
-            addLog('Nginx configuration loaded successfully');
+            if (data.mfa_status === 'enabled') {
+                mfaBtnText.textContent = 'Disable MFA';
+            } else {
+                mfaBtnText.textContent = 'Enable MFA';
+            }
         })
         .catch(error => {
-            editor.setValue('');
             addLog(`${error.message}`);
         });
     }
 
-    // 保存Nginx配置
-    function saveNginxConfig() {
-        const token = localStorage.getItem('authToken');
-        if (!token) return; // 未登录，不发送请求
+    // 生成MFA密钥
+    function generateMFASecret() {
+        const mfaBtnTextContent = mfaBtn.textContent;
 
-        const configContent = editor.getValue();
-        addLog('Saving Nginx configuration...');
-        fetch('/api/config/save', {
+        if (mfaBtnTextContent === 'Enable MFA') {
+            // 启用MFA逻辑 - 保持现有逻辑
+            addLog('Generating MFA secret...');
+
+            // 清空之前的二维码
+            qrcodeElement.innerHTML = '';
+
+            // 从后端获取MFA密钥
+            fetch('/api/mfa/generate', { method: 'POST' })
+            .then(response => {
+                return fetchThenResponse(response);
+            })
+            .then(data => {
+                const otpauthUrl = data.otpauth_url;
+                mfaSecret.textContent = data.secret;
+                
+                // 生成QR码
+                QRCode.toCanvas(qrcodeElement, otpauthUrl, { width: 192 }, (error) => {
+                    if (error) {
+                        addLog('Error generating QR code: ' + error.message);
+                        console.error('QR Code generation error:', error);
+                    } else {
+                        addLog('QR code generated successfully');
+                    }
+                    // 确保在二维码生成后再打开模态框
+                    openModal(mfaModal, mfaModalContent);
+                });
+                // 检查MFA状态
+                getMFAStatus();
+            })
+            .catch(error => {
+                addLog(`${error.message}`);
+            });
+        } else {
+            // 禁用MFA逻辑 - 新添加的逻辑
+            addLog('Preparing to disable MFA...');
+            openModal(disableMfaModal, disableMfaModalContent);
+        }
+    }
+
+    // 验证MFA代码
+    function verifyMFACode() {
+        const mfaCode = mfaCodeElement.value;
+
+        if (mfaCode.length !== 6) {
+            addLog('MFA setup failed: Please enter a valid 6-digit code');
+            return;
+        }
+        
+        addLog('Verifying MFA code...');
+        fetch('/api/mfa/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ config: configContent })
+            body: JSON.stringify({ code: mfaCode })
         })
         .then(response => {
             return fetchThenResponse(response);
         })
         .then(data => {
-            addLog('Nginx configuration saved successfully');
-            addLog('Please reload Nginx for changes to take effect');
+            addLog('MFA enabled successfully');
+            closeModal(mfaModal, mfaModalContent);
+            // 检查MFA状态
+            getMFAStatus();
         })
         .catch(error => {
             addLog(`${error.message}`);
         });
     }
 
-    // 禁用MFA模态框关闭事件
-    closeDisableMfaModal.addEventListener('click', () => {
-        closeModal(disableMfaModal, disableMfaModalContent);
-    });
-
-    // 点击禁用MFA模态框背景关闭模态框
-    disableMfaModal.addEventListener('click', (e) => {
-        if (e.target === disableMfaModal) {
-            closeModal(disableMfaModal, disableMfaModalContent);
-        }
-    });
-
-    // 确认禁用MFA按钮事件
-    confirmDisableMfaBtn.addEventListener('click', () => {
+    // 禁用MFA
+    function disableMFA() {
         const token = localStorage.getItem('authToken');
         if (!token) return; // 未登录，不发送请求
 
@@ -630,6 +742,142 @@
         .catch(error => {
             addLog(`${error.message}`);
         });
+    }
+
+    // 登录处理
+    function loginUser(e) {
+        e.preventDefault();
+        const username = loginUsername.value;
+        const password = loginPassword.value;
+        const mfaCode = loginMfaCode.value;
+
+        addLog('Attempting to login...');
+        // 显示加载状态，隐藏错误和提交按钮
+        loginLoading.classList.remove('hidden');
+        loginSubmitBtn.classList.add('hidden');
+        loginError.classList.add('hidden');
+
+        fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, password: password, mfa_code: mfaCode })
+        })
+        .then(response => {
+            // 恢复按钮状态
+            loginLoading.classList.add('hidden');
+            loginSubmitBtn.classList.remove('hidden');
+
+            return fetchThenResponse(response);
+        })
+        .then(data => {
+            // 登录成功
+            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('username', data.username);
+            authButtons.classList.add('hidden');
+            userMenu.classList.remove('hidden');
+            usernameDisplay.textContent = data.username;
+            closeModal(loginModal, loginModalContent);
+            // 检查MFA状态
+            getMFAStatus();
+            addLog(`User ${data.username} logged in successfully`);
+        })
+        .catch(error => {
+            // 显示错误信息
+            loginError.classList.remove('hidden');
+            loginErrorMessage.textContent = error.message;
+            addLog(`${error.message}`);
+        });
+    }
+
+    // 注册处理
+    function registerUser(e) {
+        e.preventDefault();
+        const username = registerUsername.value;
+        const password = registerPassword.value;
+        const confirmPassword = registerConfirmPassword.value;
+
+        // 重置错误状态
+        registerError.classList.add('hidden');
+
+        if (password !== confirmPassword) {
+            // 显示错误信息
+            registerError.classList.remove('hidden');
+            registerErrorMessage.textContent = 'Passwords do not match';
+            addLog('Registration failed: Passwords do not match');
+            return;
+        }
+
+        addLog('Attempting to register...');
+        fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, password: password })
+        })
+        .then(response => {
+            return fetchThenResponse(response);
+        })
+        .then(data => {
+            addLog(`Registration successful for ${username}`);
+            closeModal(registerModal, registerModalContent);
+            openModal(loginModal, loginModalContent);
+            // 检查MFA状态
+            getMFAStatus();
+            registerUsername.value = username;
+            registerForm.reset();
+        })
+        .catch(error => {
+            // 显示错误信息
+            registerError.classList.remove('hidden');
+            registerErrorMessage.textContent = error.message;
+            addLog(`${error.message}`);
+        });
+    }
+
+    // 检查注册是否可用
+    function registerUserAvailable() {
+        fetch('/api/register/available', { method: 'GET' })
+        .then(response => {
+            return fetchThenResponse(response);
+        })
+        .then(data => {
+            if (data.available) {
+                // 注册可用，显示注册按钮
+                registerBtn.classList.remove('hidden');
+                checkAuthStatus();
+            } else {
+                // 注册已关闭，隐藏注册按钮
+                registerBtn.classList.add('hidden');
+            }
+        })
+        .catch(error => {
+            // 请求失败时默认隐藏注册按钮
+            registerBtn.classList.add('hidden');
+            addLog(`${error.message}`);
+        });
+    }
+
+    // Nginx开关事件
+    startBtn.addEventListener('click', () => startNginx());
+    stopBtn.addEventListener('click', () => stopNginx());
+    reloadBtn.addEventListener('click', () => reloadNginx());
+    savePathBtn.addEventListener('click', () => updateNginxPath());
+
+    // 登录注册处理事件
+    mfaBtn.addEventListener('click', () => generateMFASecret());
+    confirmDisableMfaBtn.addEventListener('click', () => disableMFA());
+    loginForm.addEventListener('submit', (e) => loginUser(e));
+    registerForm.addEventListener('submit', (e) => registerUser(e));
+
+    // 禁用MFA模态框关闭事件
+    closeDisableMfaModal.addEventListener('click', () => {
+        closeModal(disableMfaModal, disableMfaModalContent);
+    });
+
+    // 点击禁用MFA模态框背景关闭模态框
+    disableMfaModal.addEventListener('click', (e) => {
+        if (e.target === disableMfaModal) {
+            closeModal(disableMfaModal, disableMfaModalContent);
+        }
     });
 
     // 模态框动画函数
@@ -668,123 +916,12 @@
         }
     }
 
-    // 登录处理
-    loginForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const username = loginUsername.value;
-        const password = loginPassword.value;
-        const mfaCode = loginMfaCode.value;
-
-        addLog('Attempting to login...');
-        // 显示加载状态，隐藏错误和提交按钮
-        loginLoading.classList.remove('hidden');
-        loginSubmitBtn.classList.add('hidden');
-        loginError.classList.add('hidden');
-
-        fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, password: password, mfa_code: mfaCode })
-        })
-        .then(response => {
-            // 恢复按钮状态
-            loginLoading.classList.add('hidden');
-            loginSubmitBtn.classList.remove('hidden');
-
-            return fetchThenResponse(response);
-        })
-        .then(data => {
-            // 登录成功
-            localStorage.setItem('authToken', data.token);
-            localStorage.setItem('username', data.username);
-            authButtons.classList.add('hidden');
-            userMenu.classList.remove('hidden');
-            usernameDisplay.textContent = data.username;
-            closeModal(loginModal, loginModalContent);
-            // 检查MFA状态
-            checkMFAStatus();
-            addLog(`User ${data.username} logged in successfully`);
-        })
-        .catch(error => {
-            // 显示错误信息
-            loginError.classList.remove('hidden');
-            loginErrorMessage.textContent = error.message;
-            addLog(`${error.message}`);
-        });
-    });
-
-    // 注册处理
-    registerForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const username = registerUsername.value;
-        const password = registerPassword.value;
-        const confirmPassword = registerConfirmPassword.value;
-
-        // 重置错误状态
-        registerError.classList.add('hidden');
-
-        if (password !== confirmPassword) {
-            // 显示错误信息
-            registerError.classList.remove('hidden');
-            registerErrorMessage.textContent = 'Passwords do not match';
-            addLog('Registration failed: Passwords do not match');
-            return;
-        }
-
-        addLog('Attempting to register...');
-        fetch('/api/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, password: password })
-        })
-        .then(response => {
-            return fetchThenResponse(response);
-        })
-        .then(data => {
-            addLog(`Registration successful for ${username}`);
-            closeModal(registerModal, registerModalContent);
-            openModal(loginModal, loginModalContent);
-            // 检查MFA状态
-            checkMFAStatus();
-            registerUsername.value = username;
-            registerForm.reset();
-        })
-        .catch(error => {
-            // 显示错误信息
-            registerError.classList.remove('hidden');
-            registerErrorMessage.textContent = error.message;
-            addLog(`${error.message}`);
-        });
-    });
-
-    // 检查注册是否可用
-    function checkRegisterAvailability() {
-        fetch('/api/register/available', { method: 'GET' })
-        .then(response => {
-            return fetchThenResponse(response);
-        })
-        .then(data => {
-            if (data.available) {
-                // 注册可用，显示注册按钮
-                registerBtn.classList.remove('hidden');
-            } else {
-                // 注册已关闭，隐藏注册按钮
-                registerBtn.classList.add('hidden');
-            }
-        })
-        .catch(error => {
-            // 请求失败时默认隐藏注册按钮
-            registerBtn.classList.add('hidden');
-            addLog(`${error.message}`);
-        });
-    }
-
     // 注销处理
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('username');
         checkAuthStatus();
-        checkRegisterAvailability();
+        registerUserAvailable();
         userDropdown.classList.add('hidden');
         addLog('Logged out successfully');
     });
@@ -793,64 +930,11 @@
     mfaBtn.addEventListener('click', () => {
         if (enableMfaBtn) {
             // 移除可能存在的旧事件监听器
-            enableMfaBtn.removeEventListener('click', handleMfaEnable);
+            enableMfaBtn.removeEventListener('click', verifyMFACode);
             // 添加新的事件监听器
-            enableMfaBtn.addEventListener('click', handleMfaEnable);
+            enableMfaBtn.addEventListener('click', verifyMFACode);
         }
     });
-
-    // 页面加载时检查MFA状态
-    function checkMFAStatus() {
-        const token = localStorage.getItem('authToken');
-        if (!token) return; // 未登录，不发送请求
-
-        fetch('/api/mfa-status', {
-            headers: {
-                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
-            }
-        })
-        .then(response => {
-            return fetchThenResponse(response);
-        })
-        .then(data => {
-            if (data.mfa_status === 'enabled') {
-                mfaBtnText.textContent = 'Disable MFA';
-            } else {
-                mfaBtnText.textContent = 'Enable MFA';
-            }
-        })
-        .catch(error => {
-            addLog(`${error.message}`);
-        });
-    }
-
-    function handleMfaEnable() {
-        const mfaCode = mfaCodeElement.value;
-
-        if (mfaCode.length !== 6) {
-            addLog('MFA setup failed: Please enter a valid 6-digit code');
-            return;
-        }
-        
-        addLog('Verifying MFA code...');
-        fetch('/api/mfa/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: mfaCode })
-        })
-        .then(response => {
-            return fetchThenResponse(response);
-        })
-        .then(data => {
-            addLog('MFA enabled successfully');
-            closeModal(mfaModal, mfaModalContent);
-            // 检查MFA状态
-            checkMFAStatus();
-        })
-        .catch(error => {
-            addLog(`${error.message}`);
-        });
-    }
 
     // 点击用户按钮显示下拉菜单
     userBtn.addEventListener('click', () => {
@@ -865,54 +949,11 @@
     });
 
     // 保存配置按钮事件监听
-    saveConfigBtn.addEventListener('click', saveNginxConfig);
+    saveConfigBtn.addEventListener('click', updateNginxConfig);
 
     // 模态框开关事件
     loginBtn.addEventListener('click', () => openModal(loginModal, loginModalContent));
     registerBtn.addEventListener('click', () => openModal(registerModal, registerModalContent));
-    mfaBtn.addEventListener('click', () => {
-        const mfaBtnTextContent = mfaBtnTextContent.textContent;
-        
-        if (mfaBtnTextContent === 'Enable MFA') {
-            // 启用MFA逻辑 - 保持现有逻辑
-            addLog('Generating MFA secret...');
-
-            // 清空之前的二维码
-            qrcodeElement.innerHTML = '';
-
-            // 从后端获取MFA密钥
-            fetch('/api/mfa/generate', { method: 'POST' })
-            .then(response => {
-                return fetchThenResponse(response);
-            })
-            .then(data => {
-                const otpauthUrl = data.otpauth_url;
-                mfaSecret.textContent = data.secret;
-                
-                // 生成QR码
-                QRCode.toCanvas(qrcodeElement, otpauthUrl, { width: 192 }, (error) => {
-                    if (error) {
-                        addLog('Error generating QR code: ' + error.message);
-                        console.error('QR Code generation error:', error);
-                    } else {
-                        addLog('QR code generated successfully');
-                    }
-                    // 确保在二维码生成后再打开模态框
-                    openModal(mfaModal, mfaModalContent);
-                });
-                // 检查MFA状态
-                checkMFAStatus();
-            })
-            .catch(error => {
-                addLog(`${error.message}`);
-            });
-        } else {
-            // 禁用MFA逻辑 - 新添加的逻辑
-            addLog('Preparing to disable MFA...');
-            openModal(disableMfaModal, disableMfaModalContent);
-        }
-    });
-
     closeLoginModal.addEventListener('click', () => closeModal(loginModal, loginModalContent));
     closeRegisterModal.addEventListener('click', () => closeModal(registerModal, registerModalContent));
     closeMfaModal.addEventListener('click', () => closeModal(mfaModal, mfaModalContent));
@@ -939,6 +980,15 @@
 
     mfaModal.addEventListener('click', (e) => {
         if (e.target === mfaModal) closeModal(mfaModal, mfaModalContent);
+    });
+
+    // 初始化Ace编辑器
+    const editor = ace.edit('editor');
+    editor.session.setMode('ace/mode/nginx');
+    editor.setOptions({
+        fontSize: '14px',
+        showPrintMargin: false,
+        highlightActiveLine: true,
     });
 
     // 添加请求拦截器，为API请求添加认证令牌
@@ -980,28 +1030,30 @@
             userMenu.classList.remove('hidden');
             usernameDisplay.textContent = username;
             // 检查MFA状态
-            checkMFAStatus();
+            getMFAStatus();
         } else {
             // 无用户信息，显示登录/注册按钮
             authButtons.classList.remove('hidden');
             userMenu.classList.add('hidden');
             // 检查注册是否可用
-            checkRegisterAvailability();
+            registerUserAvailable();
         }
     });
 
     // 初始化
     window.addEventListener('load', () => {
         // 加载Nginx配置
-        loadNginxConfig();
+        getNginxConfig();
 
         // 定期检查状态
         getNginxStatus();
 
         // 定期获取Nginx日志
-        fetchNginxLogs();
+        getNginxLogs();
 
-        // 可以从配置加载路径，但在这个简化版本中省略
+        // 获取Nginx路径
+        getNginxPath();
+
         addLog('1Pixel Nginx Manager loaded');
     });
     </script>
