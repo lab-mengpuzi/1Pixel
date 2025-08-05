@@ -48,7 +48,7 @@ var users = make(map[string]User) // 存储用户信息和MFA密钥
 var jwtSecret []byte              // JWT密钥
 
 //go:embed frontend/*
-var frontendFS embed.FS // 嵌入前端文件
+var frontendFS embed.FS // 静态资源二进制化
 
 // 执行Nginx命令
 func executeNginxCommand(args ...string) (string, error) {
@@ -835,13 +835,6 @@ func main() {
 		saveNginxConfig()
 	}
 
-	// 创建嵌入文件系统的子目录访问器
-	staticFS, err := fs.Sub(frontendFS, "frontend")
-	if err != nil {
-		fmt.Printf("前端资源处理错误: %v\n", err)
-		return
-	}
-
 	// 受保护的API路由
 	http.HandleFunc("/api/nginx/start", authMiddleware(startNginx))
 	http.HandleFunc("/api/nginx/stop", authMiddleware(stopNginx))
@@ -862,7 +855,14 @@ func main() {
 	http.HandleFunc("/api/register", registerUser)
 	http.HandleFunc("/api/register/available", registerUserAvailable)
 
-	// 处理所有静态资源请求
+	// 处理静态资源二进制化
+	staticFS, err := fs.Sub(frontendFS, "frontend")
+	if err != nil {
+		fmt.Printf("处理静态资源二进制化错误: %v\n", err)
+		return
+	}
+
+	// 处理静态资源二进制化请求
 	http.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	// 启动服务器
