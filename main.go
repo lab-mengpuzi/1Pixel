@@ -37,96 +37,18 @@ type Config struct {
 	Users     map[string]User `json:"users"`      // 存储用户信息和MFA密钥
 }
 
+// 定义上下文键类型
+type ctxKey string
+
+// 定义上下文键类型
+const usernameKey ctxKey = "username"
+
 var config Config                 // 配置信息
 var users = make(map[string]User) // 存储用户信息和MFA密钥
 var jwtSecret []byte              // JWT密钥
 
 //go:embed frontend/*
 var frontendFS embed.FS // 嵌入前端文件
-
-// 加载配置文件
-func loadConfig() error {
-	data, err := os.ReadFile("config.json")
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(data, &config); err != nil {
-		return err
-	}
-	// 确保JWT密钥存在
-	if config.JWTSecret == "" {
-		config.JWTSecret = "default-secret-key-change-this-in-production"
-	}
-	// 确保用户映射存在
-	if config.Users == nil {
-		config.Users = make(map[string]User)
-	}
-	// 加载用户数据到全局变量
-	users = config.Users
-	jwtSecret = []byte(config.JWTSecret)
-	return nil
-}
-
-// 保存配置文件
-func saveConfig() error {
-	// 先将当前用户数据保存到配置中
-	config.Users = users
-	data, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile("config.json", data, 0644)
-}
-
-// 定义上下文键类型和用户名键
-type ctxKey string
-
-const usernameKey ctxKey = "username"
-
-// 认证中间件
-func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// 认证信息
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "认证信息缺失"})
-			return
-		}
-
-		// 认证格式
-		parts := strings.SplitN(authHeader, " ", 2)
-		if !(len(parts) == 2 && parts[0] == "Bearer") {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "认证格式错误"})
-			return
-		}
-
-		// 解析和验证JWT令牌
-		claims := &jwt.RegisteredClaims{}
-		token, err := jwt.ParseWithClaims(parts[1], claims, func(token *jwt.Token) (interface{}, error) {
-			// 验证签名算法
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return jwtSecret, nil
-		})
-
-		if err != nil || !token.Valid {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "认证失败"})
-			return
-		}
-
-		// 令牌有效，将用户信息添加到请求上下文
-		username := claims.Subject
-		ctx := context.WithValue(r.Context(), usernameKey, username)
-		next(w, r.WithContext(ctx))
-	}
-}
 
 // 执行Nginx命令
 func executeNginxCommand(args ...string) (string, error) {
@@ -190,34 +112,83 @@ func executeNginxCommand(args ...string) (string, error) {
 	return string(output), err
 }
 
-// API处理函数 - 获取Nginx状态
-func getStatus(w http.ResponseWriter, r *http.Request) {
-	// 在Windows上检查Nginx进程是否运行
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("tasklist", "/FI", "IMAGENAME eq nginx.exe")
-	} else {
-		cmd = exec.Command("pgrep", "nginx")
+// 加载配置文件
+func loadNginxConfig() error {
+	data, err := os.ReadFile("config.json")
+	if err != nil {
+		return err
 	}
-	output, err := cmd.CombinedOutput()
+	if err := json.Unmarshal(data, &config); err != nil {
+		return err
+	}
+	// 确保JWT密钥存在
+	if config.JWTSecret == "" {
+		config.JWTSecret = "default-secret-key-change-this-in-production"
+	}
+	// 确保用户映射存在
+	if config.Users == nil {
+		config.Users = make(map[string]User)
+	}
+	// 加载用户数据到全局变量
+	users = config.Users
+	jwtSecret = []byte(config.JWTSecret)
+	return nil
+}
 
-	status := "stopped"
-	if err == nil {
-		if runtime.GOOS == "windows" && strings.Contains(string(output), "nginx.exe") {
-			status = "running"
-		} else if runtime.GOOS != "windows" {
-			status = "running"
+// 保存配置文件
+func saveNginxConfig() error {
+	// 先将当前用户数据保存到配置中
+	config.Users = users
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile("config.json", data, 0644)
+}
+
+// 认证中间件
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 认证信息
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "认证信息缺失"})
+			return
 		}
-	} else if runtime.GOOS != "windows" && strings.Contains(err.Error(), "exit status 1") {
-		// pgrep returns exit status 1 when no processes found
-		status = "stopped"
-	} else {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": status})
+		// 认证格式
+		parts := strings.SplitN(authHeader, " ", 2)
+		if !(len(parts) == 2 && parts[0] == "Bearer") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "认证格式错误"})
+			return
+		}
+
+		// 解析和验证JWT令牌
+		claims := &jwt.RegisteredClaims{}
+		token, err := jwt.ParseWithClaims(parts[1], claims, func(token *jwt.Token) (interface{}, error) {
+			// 验证签名算法
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return jwtSecret, nil
+		})
+
+		if err != nil || !token.Valid {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "认证失败"})
+			return
+		}
+
+		// 令牌有效，将用户信息添加到请求上下文
+		username := claims.Subject
+		ctx := context.WithValue(r.Context(), usernameKey, username)
+		next(w, r.WithContext(ctx))
+	}
 }
 
 // API处理函数 - 启动Nginx
@@ -375,7 +346,7 @@ func updateNginxPath(w http.ResponseWriter, r *http.Request) {
 
 	if path, ok := data["path"]; ok {
 		config.NginxPath = path
-		if err := saveConfig(); err != nil {
+		if err := saveNginxConfig(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -383,27 +354,6 @@ func updateNginxPath(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "success", "path": config.NginxPath})
-}
-
-// API处理函数 - 获取Nginx配置
-func getNginxConfig(w http.ResponseWriter, r *http.Request) {
-	configPath := filepath.Join(config.NginxPath, "conf", "nginx.conf")
-
-	// 检查配置文件是否存在
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		http.Error(w, "Config file not found", http.StatusNotFound)
-		return
-	}
-
-	// 读取配置文件内容
-	content, err := os.ReadFile(configPath)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading config file: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"config": string(content)})
 }
 
 // API处理函数 - 更新Nginx配置
@@ -435,73 +385,109 @@ func updateNginxConfig(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 
-// 判断注册是否可用
-func isRegisterAvailable() bool {
-	return len(users) == 0
-}
-
-// API处理函数 - 检查注册是否可用
-func checkRegisterAvailabilityHandler(w http.ResponseWriter, r *http.Request) {
-	// 设置CORS头部，允许跨域请求
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-	// 处理OPTIONS请求
-	if r.Method == "OPTIONS" {
-		return
+// API处理函数 - 获取Nginx状态
+func getNginxStatus(w http.ResponseWriter, r *http.Request) {
+	// 在Windows上检查Nginx进程是否运行
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("tasklist", "/FI", "IMAGENAME eq nginx.exe")
+	} else {
+		cmd = exec.Command("pgrep", "nginx")
 	}
+	output, err := cmd.CombinedOutput()
 
-	// 检查注册是否可用
-	available := isRegisterAvailable()
-
-	// 返回JSON响应
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"available": available})
-}
-
-// API处理函数 - 注册用户
-func registerUser(w http.ResponseWriter, r *http.Request) {
-	var data map[string]string
-	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	username, hasUsername := data["username"]
-	password, hasPassword := data["password"]
-
-	// 检查用户名和密码是否存在
-	if !hasUsername || !hasPassword || username == "" || password == "" {
-		http.Error(w, "用户名和密码是必需的", http.StatusBadRequest)
-		return
-	}
-
-	// 检查是否已存在用户数据，如果有则禁止注册
-	if !isRegisterAvailable() {
-		http.Error(w, "注册已关闭，系统已部署", http.StatusForbidden)
-		return
-	}
-
-	// 检查用户是否已存在
-	if _, exists := users[username]; exists {
-		http.Error(w, "用户名已存在", http.StatusConflict)
-		return
-	}
-
-	// 创建新用户
-	users[username] = User{
-		Password: password,
-	}
-
-	// 保存配置到文件
-	if err := saveConfig(); err != nil {
+	status := "stopped"
+	if err == nil {
+		if runtime.GOOS == "windows" && strings.Contains(string(output), "nginx.exe") {
+			status = "running"
+		} else if runtime.GOOS != "windows" {
+			status = "running"
+		}
+	} else if runtime.GOOS != "windows" && strings.Contains(err.Error(), "exit status 1") {
+		// pgrep returns exit status 1 when no processes found
+		status = "stopped"
+	} else {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "User registered successfully"})
+	json.NewEncoder(w).Encode(map[string]string{"status": status})
+}
+
+// API处理函数 - 获取Nginx路径配置
+func getNginxPath(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "success", "path": config.NginxPath})
+}
+
+// API处理函数 - 获取Nginx配置
+func getNginxConfig(w http.ResponseWriter, r *http.Request) {
+	configPath := filepath.Join(config.NginxPath, "conf", "nginx.conf")
+
+	// 检查配置文件是否存在
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		http.Error(w, "Config file not found", http.StatusNotFound)
+		return
+	}
+
+	// 读取配置文件内容
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading config file: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"config": string(content)})
+}
+
+// API处理函数 - 获取Nginx日志
+func getNginxLogs(w http.ResponseWriter, r *http.Request) {
+	logPath := filepath.Join(config.NginxPath, "logs", "access.log")
+
+	// 检查日志文件是否存在
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		http.Error(w, "Log file not found", http.StatusNotFound)
+		return
+	}
+
+	// 读取日志文件内容，获取最后10行
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading log file: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// 分割成行并获取最后10行
+	lines := strings.Split(string(content), "\n")
+	startLine := len(lines) - 10
+	if startLine < 0 {
+		startLine = 0
+	}
+	recentLogs := lines[startLine:]
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string][]string{"logs": recentLogs})
+}
+
+// API处理函数 - 获取MFA状态
+func getMFAStatus(w http.ResponseWriter, r *http.Request) {
+	// 从上下文中获取用户名
+	username := r.Context().Value(usernameKey).(string)
+
+	// 检查用户是否存在
+	user, exists := users[username]
+	if !exists {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// 返回MFA状态
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"mfa_status": user.MFAStatus,
+	})
 }
 
 // API处理函数 - 生成MFA密钥
@@ -533,7 +519,7 @@ func generateMFASecret(w http.ResponseWriter, r *http.Request) {
 		user.MFASecret = secret
 		user.MFAStatus = "pending" // 设置为待验证状态
 		users[username] = user
-		if err := saveConfig(); err != nil {
+		if err := saveNginxConfig(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -548,88 +534,6 @@ func generateMFASecret(w http.ResponseWriter, r *http.Request) {
 		"status":      "success",
 		"secret":      user.MFASecret,
 		"otpauth_url": otpauthURL,
-	})
-}
-
-// API处理函数 - 禁用MFA
-func disableMFA(w http.ResponseWriter, r *http.Request) {
-	// 从上下文中获取用户名
-	username := r.Context().Value(usernameKey).(string)
-
-	// 解析请求体
-	var data map[string]string
-	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// 获取MFA代码
-	code, ok := data["code"]
-	if !ok || code == "" {
-		http.Error(w, "MFA code is required", http.StatusBadRequest)
-		return
-	}
-
-	// 检查用户是否存在
-	user, exists := users[username]
-	if !exists {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	// 检查用户MFA状态是否为enabled
-	if user.MFAStatus != "enabled" {
-		http.Error(w, "MFA is not enabled", http.StatusBadRequest)
-		return
-	}
-
-	// 检查用户是否有MFA密钥
-	secret := user.MFASecret
-	if secret == "" {
-		http.Error(w, "No MFA secret found for user", http.StatusUnauthorized)
-		return
-	}
-
-	// 验证MFA代码
-	valid := totp.Validate(code, secret)
-	if !valid {
-		http.Error(w, "Invalid MFA code", http.StatusUnauthorized)
-		return
-	}
-
-	// 更新MFA状态为已禁用
-	user.MFAStatus = "disabled"
-	users[username] = user
-	if err := saveConfig(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// 返回结果
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status":     "success",
-		"mfa_status": user.MFAStatus,
-		"message":    "MFA disabled successfully",
-	})
-}
-
-// API处理函数 - 获取MFA状态
-func getMFAStatus(w http.ResponseWriter, r *http.Request) {
-	// 从上下文中获取用户名
-	username := r.Context().Value(usernameKey).(string)
-
-	// 检查用户是否存在
-	user, exists := users[username]
-	if !exists {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	// 返回MFA状态
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"mfa_status": user.MFAStatus,
 	})
 }
 
@@ -682,7 +586,7 @@ func verifyMFACode(w http.ResponseWriter, r *http.Request) {
 	// 更新MFA状态为已启用
 	user.MFAStatus = "enabled"
 	users[username] = user
-	if err := saveConfig(); err != nil {
+	if err := saveNginxConfig(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -693,6 +597,69 @@ func verifyMFACode(w http.ResponseWriter, r *http.Request) {
 		"status":     "success",
 		"mfa_status": user.MFAStatus,
 		"message":    "MFA code verified successfully",
+	})
+}
+
+// API处理函数 - 禁用MFA
+func disableMFA(w http.ResponseWriter, r *http.Request) {
+	// 从上下文中获取用户名
+	username := r.Context().Value(usernameKey).(string)
+
+	// 解析请求体
+	var data map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 获取MFA代码
+	code, ok := data["code"]
+	if !ok || code == "" {
+		http.Error(w, "MFA code is required", http.StatusBadRequest)
+		return
+	}
+
+	// 检查用户是否存在
+	user, exists := users[username]
+	if !exists {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// 检查用户MFA状态是否为enabled
+	if user.MFAStatus != "enabled" {
+		http.Error(w, "MFA is not enabled", http.StatusBadRequest)
+		return
+	}
+
+	// 检查用户是否有MFA密钥
+	secret := user.MFASecret
+	if secret == "" {
+		http.Error(w, "No MFA secret found for user", http.StatusUnauthorized)
+		return
+	}
+
+	// 验证MFA代码
+	valid := totp.Validate(code, secret)
+	if !valid {
+		http.Error(w, "Invalid MFA code", http.StatusUnauthorized)
+		return
+	}
+
+	// 更新MFA状态为已禁用
+	user.MFAStatus = "disabled"
+	users[username] = user
+	if err := saveNginxConfig(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 返回结果
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":     "success",
+		"mfa_status": user.MFAStatus,
+		"message":    "MFA disabled successfully",
 	})
 }
 
@@ -775,45 +742,97 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// API处理函数 - 获取Nginx日志
-func getNginxLogs(w http.ResponseWriter, r *http.Request) {
-	logPath := filepath.Join(config.NginxPath, "logs", "access.log")
-
-	// 检查日志文件是否存在
-	if _, err := os.Stat(logPath); os.IsNotExist(err) {
-		http.Error(w, "Log file not found", http.StatusNotFound)
+// API处理函数 - 注册用户
+func registerUser(w http.ResponseWriter, r *http.Request) {
+	var data map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// 读取日志文件内容，获取最后10行
-	content, err := os.ReadFile(logPath)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading log file: %v", err), http.StatusInternalServerError)
+	username, hasUsername := data["username"]
+	password, hasPassword := data["password"]
+
+	// 检查用户名和密码是否存在
+	if !hasUsername || !hasPassword || username == "" || password == "" {
+		http.Error(w, "用户名和密码是必需的", http.StatusBadRequest)
 		return
 	}
 
-	// 分割成行并获取最后10行
-	lines := strings.Split(string(content), "\n")
-	startLine := len(lines) - 10
-	if startLine < 0 {
-		startLine = 0
+	// 检查是否已存在用户数据，如果有则禁止注册
+	if !isRegisterAvailable() {
+		http.Error(w, "注册已关闭，系统已部署", http.StatusForbidden)
+		return
 	}
-	recentLogs := lines[startLine:]
+
+	// 检查用户是否已存在
+	if _, exists := users[username]; exists {
+		http.Error(w, "用户名已存在", http.StatusConflict)
+		return
+	}
+
+	// 创建新用户
+	users[username] = User{
+		Password: password,
+	}
+
+	// 保存配置到文件
+	if err := saveNginxConfig(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string][]string{"logs": recentLogs})
+	json.NewEncoder(w).Encode(map[string]string{"status": "success", "message": "User registered successfully"})
+}
+
+// 判断注册是否可用
+func isRegisterAvailable() bool {
+	return len(users) == 0
+}
+
+// API处理函数 - 检查注册是否可用
+func registerUserAvailable(w http.ResponseWriter, r *http.Request) {
+	// 设置CORS头部，允许跨域请求
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	// 处理OPTIONS请求
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	// 检查注册是否可用
+	available := isRegisterAvailable()
+
+	// 返回JSON响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"available": available})
 }
 
 func main() {
 	// 加载配置，如不存在则创建默认配置
-	if err := loadConfig(); err != nil {
+	if err := loadNginxConfig(); err != nil {
 		fmt.Println("Using default configuration")
-		config = Config{
-			NginxPath: "C:\\nginx-1.24.0", // 默认Nginx路径
-			Host:      "0.0.0.0",          // 监听IP地址
-			Port:      8080,               // 监听端口
+
+		var nginxPath string
+
+		// 根据操作系统设置Nginx路径
+		if runtime.GOOS == "windows" {
+			nginxPath = "C:\\nginx-1.24.0"
+		} else {
+			nginxPath = "/usr/local/nginx"
 		}
-		saveConfig()
+
+		config = Config{
+			NginxPath: nginxPath,                                      // 默认Nginx路径
+			Host:      "0.0.0.0",                                      // 监听IP地址
+			Port:      8080,                                           // 监听端口
+			JWTSecret: "default-secret-key-change-this-in-production", // JWT密钥
+			Users:     make(map[string]User),                          // 存储用户信息
+		}
+		saveNginxConfig()
 	}
 
 	// 创建嵌入文件系统的子目录访问器
@@ -823,24 +842,25 @@ func main() {
 		return
 	}
 
+	// 受保护的API路由
+	http.HandleFunc("/api/nginx/start", authMiddleware(startNginx))
+	http.HandleFunc("/api/nginx/stop", authMiddleware(stopNginx))
+	http.HandleFunc("/api/nginx/reload", authMiddleware(reloadNginx))
+	http.HandleFunc("/api/nginx/path/set", authMiddleware(updateNginxPath))
+	http.HandleFunc("/api/nginx/save", authMiddleware(updateNginxConfig))
+	http.HandleFunc("/api/nginx/status", authMiddleware(getNginxStatus))
+	http.HandleFunc("/api/nginx/config", authMiddleware(getNginxConfig))
+	http.HandleFunc("/api/nginx/path/get", authMiddleware(getNginxPath))
+	http.HandleFunc("/api/nginx/logs", authMiddleware(getNginxLogs))
+	http.HandleFunc("/api/mfa/status", authMiddleware(getMFAStatus))
+	http.HandleFunc("/api/mfa/generate", authMiddleware(generateMFASecret))
+	http.HandleFunc("/api/mfa/verify", authMiddleware(verifyMFACode))
+	http.HandleFunc("/api/mfa/disable", authMiddleware(disableMFA))
+
 	// 认证相关路由（不需要中间件）
 	http.HandleFunc("/api/login", loginUser)
 	http.HandleFunc("/api/register", registerUser)
-	http.HandleFunc("/api/register/available", checkRegisterAvailabilityHandler)
-
-	// 受保护的API路由
-	http.HandleFunc("/api/status", authMiddleware(getStatus))
-	http.HandleFunc("/api/start", authMiddleware(startNginx))
-	http.HandleFunc("/api/stop", authMiddleware(stopNginx))
-	http.HandleFunc("/api/reload", authMiddleware(reloadNginx))
-	http.HandleFunc("/api/set-path", authMiddleware(updateNginxPath))
-	http.HandleFunc("/api/logs", authMiddleware(getNginxLogs))
-	http.HandleFunc("/api/config", authMiddleware(getNginxConfig))
-	http.HandleFunc("/api/config/save", authMiddleware(updateNginxConfig))
-	http.HandleFunc("/api/mfa/generate", authMiddleware(generateMFASecret))
-	http.HandleFunc("/api/mfa/verify", authMiddleware(verifyMFACode))
-	http.HandleFunc("/api/mfa-status", authMiddleware(getMFAStatus))
-	http.HandleFunc("/api/mfa/disable", authMiddleware(disableMFA))
+	http.HandleFunc("/api/register/available", registerUserAvailable)
 
 	// 处理所有静态资源请求
 	http.Handle("/", http.FileServer(http.FS(staticFS)))
