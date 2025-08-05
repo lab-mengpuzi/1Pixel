@@ -27,6 +27,12 @@
     }
     </script>
     <style type="text/tailwindcss">
+    @keyframes scroll {
+      0% { transform: translateX(100%); }
+      10% { transform: translateX(100%); }
+      90% { transform: translateX(-100%); }
+      100% { transform: translateX(-100%); }
+    }
     @layer utilities {
         .content-auto {
             content-visibility: auto;
@@ -34,6 +40,9 @@
         .btn-effect {
             @apply transition-all duration-200 hover:shadow-lg transform hover:-translate-y-0.5;
         }
+        .scroll-optimized { animation: scroll linear infinite; }
+        .scroll-paused { animation-play-state: paused; }
+        .force-single-line { white-space: nowrap; overflow: visible; }
     }
     </style>
 </head>
@@ -41,9 +50,13 @@
     <div class="container mx-auto px-4 py-8 max-w-4xl">
         <header class="mb-8 text-center">
             <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-dark mb-2">
-                <span class="text-primary">1</span>pixel
+                <span class="text-primary">1</span>Pixel
             </h1>
-            <p class="text-gray-600 text-lg">Nginx Management Tool</p>
+            <p class="text-gray-600 text-lg mb-2">Nginx Management Tool</p>
+            <!-- 滚动横幅容器 -->
+            <div class="bg-[#165DFF] text-white overflow-hidden h-12" id="banner">
+                <div id="scrollContent" class="scroll-optimized flex items-center h-full force-single-line"></div>
+            </div>
             <div class="mt-4 flex justify-center gap-2" id="auth-buttons">
                 <button id="login-btn" class="bg-primary text-white py-2 px-4 rounded-lg btn-effect">
                     <i class="fa fa-sign-in mr-1"></i> Login
@@ -306,6 +319,8 @@
     const enableMfaBtn = document.getElementById('enable-mfa-btn');
     const mfaCodeElement = document.getElementById('mfa-code');
     const qrcodeElement = document.getElementById('qrcode');
+    const scrollContent = document.getElementById('scrollContent');
+    const banner = document.getElementById('banner');
 
     // 认证相关DOM元素
     const authButtons = document.getElementById('auth-buttons');
@@ -964,23 +979,69 @@
         setTimeout(() => openModal(registerModal, registerModalContent), 300);
     });
 
+    // 切换登录/注册表单
     switchToLogin.addEventListener('click', () => {
         closeModal(registerModal, registerModalContent);
         setTimeout(() => openModal(loginModal, loginModalContent), 300);
     });
 
-    // 点击模态框背景关闭模态框
+    // 点击登录模态框背景关闭模态框
     loginModal.addEventListener('click', (e) => {
         if (e.target === loginModal) closeModal(loginModal, loginModalContent);
     });
 
+    // 点击注册模态框背景关闭模态框
     registerModal.addEventListener('click', (e) => {
         if (e.target === registerModal) closeModal(registerModal, registerModalContent);
     });
 
+    // 点击MFA模态框背景关闭模态框
     mfaModal.addEventListener('click', (e) => {
         if (e.target === mfaModal) closeModal(mfaModal, mfaModalContent);
     });
+
+    // 初始化滚动内容
+    function initScroll() {
+        const config = {
+            texts: ['精勤博学', '学以致用', '用以改进', '知行合一', '博学笃行'],
+            totalDuration: 20, // 总周期 (秒)
+            gap: 20,           // 文本间距 (px)
+            fontSize: 16,      // 字体大小 (px)
+            circleSize: 18,    // 编号圆圈尺寸 (px)
+        };
+
+        scrollContent.style.animationDuration = `${config.totalDuration}s`;
+
+        // 构建文本容器
+        const content = document.createElement('div');
+        content.className = 'flex items-center px-6';
+        content.style.gap = `${config.gap}px`;
+
+        // 生成文本项
+        config.texts.forEach((text, i) => {
+            const item = document.createElement('span');
+            item.className = 'flex items-center';
+            item.style.fontSize = `${config.fontSize}px`;
+            item.innerHTML = `
+<span class="bg-white text-[#165DFF] rounded-full flex items-center justify-center mr-3"
+    style="width: ${config.circleSize}px; height: ${config.circleSize}px; font-size: ${config.fontSize - 4}px">
+    ${i + 1}
+</span>
+<span>${text}</span>
+            `;
+            content.appendChild(item);
+        });
+
+        scrollContent.appendChild(content);
+
+        // 悬停暂停
+        banner.addEventListener('mouseenter', () => {
+            scrollContent.classList.add('scroll-paused');
+        });
+        banner.addEventListener('mouseleave', () => {
+            scrollContent.classList.remove('scroll-paused');
+        });
+    }
 
     // 初始化Ace编辑器
     const editor = ace.edit('editor');
@@ -1053,6 +1114,9 @@
 
         // 获取Nginx路径
         getNginxPath();
+
+        // 初始化滚动内容
+        initScroll();
 
         addLog('1Pixel Nginx Manager loaded');
     });
