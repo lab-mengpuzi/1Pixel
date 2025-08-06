@@ -87,7 +87,12 @@
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
             <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
                 <div>
-                    <h2 class="text-xl font-semibold text-dark">Nginx Status</h2>
+                    <div class="flex items-center">
+                        <h2 class="text-xl font-semibold text-dark">Nginx Status</h2>
+                        <button id="help-status-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 ml-2">
+                            <i class="fa fa-question-circle text-gray-600"></i>
+                        </button>
+                    </div>
                     <p class="text-gray-500" id="status-text">Checking status...</p>
                 </div>
                 <div class="mt-4 md:mt-0 flex items-center gap-3" id="status-controls">
@@ -115,7 +120,12 @@
 
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-dark">Nginx Configuration</h2>
+                <div class="flex items-center">
+                    <h2 class="text-xl font-semibold text-dark">Nginx Configuration</h2>
+                    <button id="help-path-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 ml-2">
+                        <i class="fa fa-question-circle text-gray-600"></i>
+                    </button>
+                </div>
                 <button id="refresh-path-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
                     <i class="fa fa-refresh mr-1"></i> Refresh
                 </button>
@@ -131,7 +141,12 @@
 
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-dark">Nginx Configuration Editor</h2>
+                <div class="flex items-center">
+                    <h2 class="text-xl font-semibold text-dark">Nginx Configuration Editor</h2>
+                    <button id="help-config-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 ml-2">
+                        <i class="fa fa-question-circle text-gray-600"></i>
+                    </button>
+                </div>
                 <button id="refresh-config-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
                     <i class="fa fa-refresh mr-1"></i> Refresh
                 </button>
@@ -148,7 +163,12 @@
 
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-dark">Nginx Access Logs</h2>
+                <div class="flex items-center">
+                    <h2 class="text-xl font-semibold text-dark">Nginx Access Logs</h2>
+                    <button id="help-logs-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 ml-2">
+                        <i class="fa fa-question-circle text-gray-600"></i>
+                    </button>
+                </div>
                 <button id="refresh-logs-btn" class="bg-primary text-white py-1 px-3 rounded-lg btn-effect text-sm flex items-center justify-center">
                     <i class="fa fa-refresh mr-1"></i> Refresh
                 </button>
@@ -159,7 +179,12 @@
         </div>
 
         <div class="bg-white rounded-xl shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold text-dark mb-4">Operation Log</h2>
+            <div class="flex items-center">
+                <h2 class="text-xl font-semibold text-dark">Operation Log</h2>
+                <button id="help-log-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 ml-2">
+                    <i class="fa fa-question-circle text-gray-600"></i>
+                </button>
+            </div>
             <div id="log-area" class="bg-gray-50 p-4 rounded-lg h-40 overflow-y-auto text-sm text-gray-700 font-mono">
                 <p></p>
             </div>
@@ -294,7 +319,223 @@
         </div>
     </div>
 
+    <!-- Help Modal -->
+    <div id="help-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-4xl mx-4 transform transition-all duration-300 scale-95 opacity-0" id="help-modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-dark" id="help-modal-title">Help</h2>
+                <button id="close-help-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="flex gap-6 h-96">
+                <!-- 左侧选项卡 -->
+                <div class="w-1/3">
+                    <div class="space-y-2" id="help-tabs">
+                        <!-- 动态生成的选项卡将在这里 -->
+                    </div>
+                </div>
+                <!-- 右侧内容区域 -->
+                <div class="flex-1 min-w-0">
+                    <div class="bg-gray-50 rounded-lg p-4 h-full overflow-y-auto overflow-x-hidden" id="help-content">
+                        <!-- 动态生成的内容将在这里 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+    // Help内容数据结构
+    const helpData = {
+        status: {
+            title: 'Nginx Status Help',
+            tabs: [
+                {
+                    name: 'Overview',
+                    description: 'Nginx状态管理说明',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Nginx Status Management</h3>
+    <p class="text-gray-700">管理Nginx服务的运行状态，包括启动、停止和重载配置。</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 启动Nginx
+sudo systemctl start nginx
+
+# 停止Nginx
+sudo systemctl stop nginx
+
+# 重载配置
+sudo systemctl reload nginx
+
+# 查看状态
+sudo systemctl status nginx</code></pre>
+</div>`
+                }
+            ]
+        },
+        path: {
+            title: 'Nginx Path Help',
+            tabs: [
+                {
+                    name: 'Overview',
+                    description: 'Nginx安装路径配置说明',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Nginx Installation Path</h3>
+    <p class="text-gray-700">配置Nginx的安装路径，用于管理Nginx服务。</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># Windows示例路径
+C:\\nginx-1.24.0
+# 二进制文件示例路径
+nginx-1.24.0\\nginx.exe
+
+# Linux示例路径
+/usr/local/nginx
+# 二进制文件示例路径
+nginx/nginx
+
+# macOS示例路径
+/usr/local/nginx
+# 二进制文件示例路径
+nginx/nginx</code></pre>
+</div>`
+                },
+                {
+                    name: 'Windows',
+                    description: 'Windows系统下的Nginx路径配置',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Windows路径配置</h3>
+    <p class="text-gray-700">在Windows系统下，Nginx的常见安装路径：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 标准安装路径
+C:\\nginx-1.24.0</code></pre>
+    <p class="text-gray-700">确保路径指向包含conf、html、logs等目录的Nginx根目录。</p>
+</div>`
+                },
+                {
+                    name: 'Linux',
+                    description: 'Linux系统下的Nginx路径配置',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Linux路径配置</h3>
+    <p class="text-gray-700">在Linux系统下，Nginx的常见安装路径：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 源码编译安装
+/usr/local/nginx</code></pre>
+    <p class="text-gray-700">确保路径指向包含conf、html、logs等目录的Nginx根目录。</p>
+</div>`
+                },
+                {
+                    name: 'macOS',
+                    description: 'macOS系统下的Nginx路径配置',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">macOS路径配置</h3>
+    <p class="text-gray-700">在macOS系统下，Nginx的常见安装路径：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 源码编译安装
+/usr/local/nginx</code></pre>
+    <p class="text-gray-700">确保路径指向包含conf、html、logs等目录的Nginx根目录。</p>
+</div>`
+                }
+            ]
+        },
+        config: {
+            title: 'Nginx Configuration Help',
+            tabs: [
+                {
+                    name: 'Overview',
+                    description: 'Nginx配置编辑说明',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Nginx Configuration Editor</h3>
+    <p class="text-gray-700">在线编辑Nginx配置文件，支持语法高亮和实时预览。</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 基本配置示例
+server {
+    listen 80;
+    server_name example.com;
+    root /var/www/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}</code></pre>
+</div>`
+                }
+            ]
+        },
+        logs: {
+            title: 'Nginx Logs Help',
+            tabs: [
+                {
+                    name: 'Overview',
+                    description: 'Nginx访问日志说明',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Nginx Access Logs</h3>
+    <p class="text-gray-700">查看Nginx的访问日志，监控网站访问情况。</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 日志格式示例
+127.0.0.1 - - [10/Oct/2023:14:32:45 +0800] "GET / HTTP/1.1" 200 612
+127.0.0.1 - - [10/Oct/2023:14:32:46 +0800] "GET /favicon.ico HTTP/1.1" 404 209
+
+# 日志格式说明
+remote_addr - remote_user [time_local] "request" status bytes_sent</code></pre>
+</div>`
+                }
+            ]
+        },
+        log: {
+            title: 'Operation Log Help',
+            tabs: [
+                {
+                    name: 'Overview',
+                    description: '操作日志功能说明',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Operation Log</h3>
+    <p class="text-gray-700">操作日志记录了所有Nginx管理操作的执行情况，包括启动、停止、重载配置、保存配置等操作的历史记录。</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 操作日志格式示例
+[14:32:45] Nginx service started successfully
+[14:33:12] Configuration saved successfully
+[14:33:45] Failed to reload Nginx configuration
+[14:34:20] Nginx service stopped successfully
+
+# 日志格式说明
+[timestamp] message</code></pre>
+</div>`
+                },
+                {
+                    name: 'Features',
+                    description: '功能特性',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">功能特性</h3>
+    <ul class="list-disc list-inside space-y-2 text-gray-700">
+        <li><strong>实时记录</strong>：自动记录所有Nginx管理操作</li>
+        <li><strong>时间戳</strong>：每个操作都有精确的时间记录</li>
+        <li><strong>日志级别</strong>：区分不同类型的操作结果</li>
+        <li><strong>滚动显示</strong>：自动滚动显示最新的操作记录</li>
+        <li><strong>等宽字体</strong>：使用等宽字体确保日志格式整齐</li>
+    </ul>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 支持的操作类型
+- Nginx服务启动/停止/重载
+- 配置文件保存
+- 路径配置修改
+- 用户登录/登出
+- 系统错误记录</code></pre>
+</div>`
+                }
+            ]
+        },
+    };
+
     // DOM元素
     const statusText = document.getElementById('status-text');
     const statusIndicator = document.getElementById('status-indicator');
@@ -353,6 +594,19 @@
     const loginLoading = document.getElementById('login-loading');
     const registerForm = document.getElementById('register-form');
     const saveConfigBtn = document.getElementById('save-config-btn');
+
+    // Help模态框相关DOM元素
+    const helpModal = document.getElementById('help-modal');
+    const helpModalContent = document.getElementById('help-modal-content');
+    const helpModalTitle = document.getElementById('help-modal-title');
+    const closeHelpModal = document.getElementById('close-help-modal');
+    const helpTabs = document.getElementById('help-tabs');
+    const helpContent = document.getElementById('help-content');
+    const helpStatusBtn = document.getElementById('help-status-btn');
+    const helpPathBtn = document.getElementById('help-path-btn');
+    const helpConfigBtn = document.getElementById('help-config-btn');
+    const helpLogsBtn = document.getElementById('help-logs-btn');
+    const helpLogBtn = document.getElementById('help-log-btn');
 
     // 禁用MFA模态框相关DOM元素
     const disableMfaModal = document.getElementById('disable-mfa-modal');
@@ -922,6 +1176,58 @@
         }, 300);
     }
 
+    // 显示Help模态框
+    function showHelpModal(helpType) {
+        const data = helpData[helpType];
+        if (!data) {
+            console.error('Help data not found for type:', helpType);
+            return;
+        }
+
+        // 设置标题
+        helpModalTitle.textContent = data.title;
+
+        // 清空现有内容
+        helpTabs.innerHTML = '';
+        helpContent.innerHTML = '';
+
+        // 创建选项卡
+        data.tabs.forEach((tab, index) => {
+            const tabButton = document.createElement('button');
+            tabButton.className = `w-full text-left px-4 py-3 rounded-lg transition-colors duration-200 ${index === 0 ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`;
+            tabButton.textContent = tab.name;
+            tabButton.addEventListener('click', () => selectHelpTab(helpType, index));
+            helpTabs.appendChild(tabButton);
+        });
+
+        // 显示第一个选项卡的内容
+        selectHelpTab(helpType, 0);
+
+        // 显示模态框
+        openModal(helpModal, helpModalContent);
+    }
+
+    // 选择Help选项卡
+    function selectHelpTab(helpType, tabIndex) {
+        const data = helpData[helpType];
+        if (!data || !data.tabs[tabIndex]) return;
+
+        const tab = data.tabs[tabIndex];
+
+        // 更新选项卡样式
+        const tabButtons = helpTabs.querySelectorAll('button');
+        tabButtons.forEach((button, index) => {
+            if (index === tabIndex) {
+                button.className = 'w-full text-left px-4 py-3 rounded-lg transition-colors duration-200 bg-primary text-white';
+            } else {
+                button.className = 'w-full text-left px-4 py-3 rounded-lg transition-colors duration-200 bg-gray-100 text-gray-700 hover:bg-gray-200';
+            }
+        });
+
+        // 更新内容区域
+        helpContent.innerHTML = tab.content;
+    }
+
     // 检查认证状态
     function checkAuthStatus() {
         const token = localStorage.getItem('authToken');
@@ -981,6 +1287,14 @@
     closeRegisterModal.addEventListener('click', () => closeModal(registerModal, registerModalContent));
     closeMfaModal.addEventListener('click', () => closeModal(mfaModal, mfaModalContent));
 
+    // Help模态框事件监听
+    helpStatusBtn.addEventListener('click', () => showHelpModal('status'));
+    helpPathBtn.addEventListener('click', () => showHelpModal('path'));
+    helpConfigBtn.addEventListener('click', () => showHelpModal('config'));
+    helpLogsBtn.addEventListener('click', () => showHelpModal('logs'));
+    helpLogBtn.addEventListener('click', () => showHelpModal('log'));
+    closeHelpModal.addEventListener('click', () => closeModal(helpModal, helpModalContent));
+
     // 切换登录/注册表单
     switchToRegister.addEventListener('click', () => {
         closeModal(loginModal, loginModalContent);
@@ -1006,6 +1320,11 @@
     // 点击MFA模态框背景关闭模态框
     mfaModal.addEventListener('click', (e) => {
         if (e.target === mfaModal) closeModal(mfaModal, mfaModalContent);
+    });
+
+    // 点击Help模态框背景关闭模态框
+    helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) closeModal(helpModal, helpModalContent);
     });
 
     // 初始化滚动内容
