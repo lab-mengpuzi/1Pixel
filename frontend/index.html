@@ -382,8 +382,8 @@ sudo systemctl status nginx</code></pre>
                     description: 'Nginx安装路径配置说明',
                     content: `
 <div class="space-y-4">
-    <h3 class="text-lg font-semibold text-dark">Nginx Installation Path</h3>
-    <p class="text-gray-700">配置Nginx的安装路径，用于管理Nginx服务。</p>
+    <h3 class="text-lg font-semibold text-dark">Nginx Path Structure</h3>
+    <p class="text-gray-700">1Pixel 默认路径</p>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
 <code># Windows示例路径
 C:\\nginx-1.24.0
@@ -399,6 +399,23 @@ nginx/nginx
 /usr/local/nginx
 # 二进制文件示例路径
 nginx/nginx</code></pre>
+    <p class="text-gray-700">Nginx路径包含主程序目录、配置文件目录、网站根目录及日志目录等。</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 主配置文件路径
+/etc/nginx/nginx.conf 或 /usr/local/openresty/nginx/conf/nginx.conf
+
+# 网站配置文件目录
+/usr/local/openresty/nginx/conf/conf.d/
+
+# 网站根目录示例
+/www/sites/www.mengpuzi.com/index
+
+# 日志文件目录
+/var/log/nginx/  # 全局日志
+/www/sites/www.mengpuzi.com/log/  # 站点日志
+
+# SSL证书目录
+/www/sites/www.mengpuzi.com/ssl/</code></pre>
 </div>`
                 },
                 {
@@ -410,7 +427,11 @@ nginx/nginx</code></pre>
     <p class="text-gray-700">在Windows系统下，Nginx的常见安装路径：</p>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
 <code># 标准安装路径
-C:\\nginx-1.24.0</code></pre>
+C:\\nginx-1.24.0
+C:\\openresty-1.21.4.1-win64
+
+# 站点配置示例
+C:\\openresty-1.21.4.1-win64\\nginx\\conf\\conf.d\\*.conf</code></pre>
     <p class="text-gray-700">确保路径指向包含conf、html、logs等目录的Nginx根目录。</p>
 </div>`
                 },
@@ -420,11 +441,29 @@ C:\\nginx-1.24.0</code></pre>
                     content: `
 <div class="space-y-4">
     <h3 class="text-lg font-semibold text-dark">Linux路径配置</h3>
-    <p class="text-gray-700">在Linux系统下，Nginx的常见安装路径：</p>
+    <p class="text-gray-700">在Linux系统下，基于OpenResty的Nginx常见路径：</p>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
-<code># 源码编译安装
-/usr/local/nginx</code></pre>
-    <p class="text-gray-700">确保路径指向包含conf、html、logs等目录的Nginx根目录。</p>
+<code># OpenResty安装目录
+/usr/local/openresty/nginx/
+
+# 主配置文件
+/usr/local/openresty/nginx/conf/nginx.conf
+
+# 站点配置目录
+/usr/local/openresty/nginx/conf/conf.d/
+
+# WAF配置
+/usr/local/openresty/1pwaf/data/conf/waf.conf
+
+# 站点根目录
+/www/sites/[domain]/index
+
+# 站点日志目录
+/www/sites/[domain]/log/
+
+# 站点SSL证书目录
+/www/sites/[domain]/ssl/</code></pre>
+    <p class="text-gray-700">[]中的内容需替换为实际域名，如www.mengpuzi.com。</p>
 </div>`
                 },
                 {
@@ -435,8 +474,17 @@ C:\\nginx-1.24.0</code></pre>
     <h3 class="text-lg font-semibold text-dark">macOS路径配置</h3>
     <p class="text-gray-700">在macOS系统下，Nginx的常见安装路径：</p>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
-<code># 源码编译安装
-/usr/local/nginx</code></pre>
+<code># Homebrew安装路径
+/usr/local/Cellar/openresty/[version]/nginx/
+
+# 主配置文件
+/usr/local/etc/nginx/nginx.conf
+
+# 站点配置目录
+/usr/local/etc/nginx/conf.d/
+
+# 站点根目录示例
+/Users/[user]/Sites/[domain]/index</code></pre>
     <p class="text-gray-700">确保路径指向包含conf、html、logs等目录的Nginx根目录。</p>
 </div>`
                 }
@@ -447,23 +495,180 @@ C:\\nginx-1.24.0</code></pre>
             tabs: [
                 {
                     name: 'Overview',
-                    description: 'Nginx配置编辑说明',
+                    description: 'Nginx配置结构说明',
                     content: `
 <div class="space-y-4">
-    <h3 class="text-lg font-semibold text-dark">Nginx Configuration Editor</h3>
-    <p class="text-gray-700">在线编辑Nginx配置文件，支持语法高亮和实时预览。</p>
+    <h3 class="text-lg font-semibold text-dark">Nginx Configuration Structure</h3>
+    <p class="text-gray-700">Nginx配置由多个层级的块组成，主要包括：</p>
+    <ul class="list-disc list-inside space-y-2 text-gray-700">
+        <li><strong>全局块</strong>：影响Nginx整体运行的配置</li>
+        <li><strong>events块</strong>：影响Nginx服务器与用户的网络连接</li>
+        <li><strong>http块</strong>：配置HTTP服务器的主要区域，包含所有网站的公共配置</li>
+        <li><strong>server块</strong>：虚拟主机配置，每个server块对应一个网站</li>
+    </ul>
+    
+    <h4 class="text-md font-medium text-dark">全局块示例</h4>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
-<code># 基本配置示例
-server {
-    listen 80;
-    server_name example.com;
-    root /var/www/html;
-    index index.html;
+<code>user  root;
+worker_processes  auto;
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;</code></pre>
 
-    location / {
-        try_files $uri $uri/ =404;
-    }
+    <h4 class="text-md font-medium text-dark">events块示例</h4>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>events {
+    worker_connections  1024;
 }</code></pre>
+
+    <h4 class="text-md font-medium text-dark">http块示例</h4>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    
+    # 其他http级配置...
+    
+    # 引入站点配置
+    include /usr/local/openresty/nginx/conf/conf.d/*.conf;
+}</code></pre>
+
+    <h4 class="text-md font-medium text-dark">server块示例</h4>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>server {
+    listen 80 www.mengpuzi.com;
+    listen 443 ssl http2 www.mengpuzi.com;
+    server_name www.mengpuzi.com;
+    root /www/sites/www.mengpuzi.com/index;
+    index index.html;
+    
+    # 其他server级配置...
+}</code></pre>
+</div>`
+                },
+                {
+                    name: 'SSL Configuration',
+                    description: 'SSL证书与安全配置（server块）',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">SSL安全配置 <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">server块</span></h3>
+    <p class="text-gray-700">SSL配置位于server块中，用于启用HTTPS并配置安全参数：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>server {
+    # 监听HTTPS端口
+    listen 443 ssl http2;
+    
+    # SSL证书路径
+    ssl_certificate /www/sites/www.mengpuzi.com/ssl/fullchain.pem;
+    ssl_certificate_key /www/sites/www.mengpuzi.com/ssl/privkey.pem;
+
+    # 支持的TLS协议版本 <span class="text-green-400"># 推荐仅启用TLSv1.2及以上</span>
+    ssl_protocols TLSv1.3 TLSv1.2;
+
+    # 加密套件配置
+    ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:
+                ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:
+                ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:
+                DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:
+                !aNULL:!eNULL:!EXPORT:!DSS:!DES:!RC4:!3DES:!MD5:!PSK;
+
+    # 其他安全配置
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # HTTP强制跳转HTTPS
+    error_page 497 https://$host$request_uri;
+}</code></pre>
+    <p class="text-gray-700">每个虚拟主机（server块）可以配置不同的SSL证书，实现多域名HTTPS支持。</p>
+</div>`
+                },
+                {
+                    name: 'Rate Limiting',
+                    description: '请求限流配置（http块与server块）',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">请求限流配置</h3>
+    
+    <h4 class="text-md font-medium text-dark">限流区域定义 <span class="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded">http块</span></h4>
+    <p class="text-gray-700">在http块中定义限流区域，可被所有server块共享：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>http {
+    # 基于IP的请求频率限制
+    limit_req_zone $binary_remote_addr zone=perip_req:10m rate=1r/s;
+    
+    # 基于服务器的请求频率限制
+    limit_req_zone $server_name zone=perserver_req:10m rate=1r/s;
+    
+    # 基于IP的连接数限制
+    limit_conn_zone $binary_remote_addr zone=perip:10m;
+    
+    # 基于服务器的连接数限制
+    limit_conn_zone $server_name zone=perserver:10m;
+    
+    # 其他配置...
+}</code></pre>
+
+    <h4 class="text-md font-medium text-dark">限流应用 <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">server块</span></h4>
+    <p class="text-gray-700">在server块中应用限流规则，针对特定站点生效：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>server {
+    # 其他配置...
+    
+    # 连接数限制
+    limit_conn perserver 300;  # 服务器最大并发连接数
+    limit_conn perip 10;       # 单IP最大并发连接数
+    limit_conn_status 429;     # 连接数超限状态码
+
+    # 请求频率限制
+    limit_req zone=perserver_req burst=300 nodelay;  # 服务器请求burst
+    limit_req zone=perip_req burst=10 nodelay;       # 单IP请求burst
+    limit_req_status 429;      # 请求频率超限状态码
+
+    # 单连接限速
+    limit_rate 128k;
+}</code></pre>
+    <p class="text-gray-700">burst参数表示允许的突发请求数，nodelay表示不延迟处理突发请求。</p>
+</div>`
+                },
+                {
+                    name: 'Gzip Compression',
+                    description: 'Gzip压缩配置（http块）',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Gzip压缩配置 <span class="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded">http块</span></h3>
+    <p class="text-gray-700">Gzip压缩配置位于http块中，对所有站点生效：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>http {
+    # 启用Gzip压缩
+    gzip on;
+    
+    # 最小压缩文件大小
+    gzip_min_length  1k;
+    
+    # 压缩缓冲区大小
+    gzip_buffers     4 16k;
+    
+    # 支持的HTTP版本
+    gzip_http_version 1.1;
+    
+    # 压缩级别(1-9)，级别越高压缩率越好但CPU消耗越大
+    gzip_comp_level 2;
+    
+    # 需压缩的文件类型
+    gzip_types     text/plain application/javascript application/x-javascript 
+                   text/javascript text/css application/xml;
+    
+    # 启用Vary响应头，告知代理服务器缓存压缩和非压缩版本
+    gzip_vary on;
+    
+    # 代理场景下的压缩策略
+    gzip_proxied   expired no-cache no-store private auth;
+    
+    # 禁用旧版IE浏览器的压缩
+    gzip_disable   "MSIE [1-6]\.";
+}</code></pre>
+    <p class="text-gray-700">Gzip配置在http块中定义后对所有站点生效，也可在特定server块中单独配置。</p>
 </div>`
                 }
             ]
@@ -473,18 +678,60 @@ server {
             tabs: [
                 {
                     name: 'Overview',
-                    description: 'Nginx访问日志说明',
+                    description: 'Nginx日志说明',
                     content: `
 <div class="space-y-4">
-    <h3 class="text-lg font-semibold text-dark">Nginx Access Logs</h3>
-    <p class="text-gray-700">查看Nginx的访问日志，监控网站访问情况。</p>
+    <h3 class="text-lg font-semibold text-dark">Nginx Log Configuration</h3>
+    <p class="text-gray-700">Nginx日志包括访问日志和错误日志，记录请求详情和系统异常。</p>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
-<code># 日志格式示例
-127.0.0.1 - - [10/Oct/2023:14:32:45 +0800] "GET / HTTP/1.1" 200 612
-127.0.0.1 - - [10/Oct/2023:14:32:46 +0800] "GET /favicon.ico HTTP/1.1" 404 209
+<code># 日志存储路径
+# 全局日志（http块或全局块）
+error_log  /var/log/nginx/error.log notice;
+access_log /var/log/nginx/access.log main;
 
-# 日志格式说明
-remote_addr - remote_user [time_local] "request" status bytes_sent</code></pre>
+# 站点日志（server块）
+error_log /www/sites/www.mengpuzi.com/log/error.log;
+access_log /www/sites/www.mengpuzi.com/log/access.log main;
+
+# 标准输出日志（容器环境）
+error_log  /dev/stdout notice;
+access_log /dev/stdout main;</code></pre>
+    <p class="text-gray-700">日志格式定义（http块）：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+}</code></pre>
+</div>`
+                },
+                {
+                    name: 'Log Format',
+                    description: '日志格式说明',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">日志字段说明</h3>
+    <p class="text-gray-700">main格式日志各字段含义：</p>
+    <ul class="list-disc list-inside space-y-2 text-gray-700">
+        <li><strong>$remote_addr</strong>：客户端IP地址</li>
+        <li><strong>$remote_user</strong>：客户端认证用户名（未认证为"-"）</li>
+        <li><strong>$time_local</strong>：本地时间（格式：dd/Mon/yyyy:HH:mm:ss +0800）</li>
+        <li><strong>$request</strong>：请求行（方法 + URI + 协议版本）</li>
+        <li><strong>$status</strong>：HTTP响应状态码</li>
+        <li><strong>$body_bytes_sent</strong>：发送给客户端的字节数（不含响应头）</li>
+        <li><strong>$http_referer</strong>：引用页URL</li>
+        <li><strong>$http_user_agent</strong>：客户端浏览器标识</li>
+        <li><strong>$http_x_forwarded_for</strong>：代理链中的客户端真实IP</li>
+    </ul>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code># 日志示例
+192.168.1.1 - - [07/Aug/2025:10:30:45 +0800] "GET /index.html HTTP/1.1" 200 1520 "https://example.com" "Mozilla/5.0 Chrome/114.0" "192.168.1.1"
+
+# 状态码说明
+200: 请求成功
+404: 资源不存在
+429: 请求频率超限
+500: 服务器内部错误</code></pre>
 </div>`
                 }
             ]
