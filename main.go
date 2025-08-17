@@ -7,6 +7,7 @@ import (
 
 	"crypto/rand"
 	"encoding/base32"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -112,6 +113,22 @@ func executeNginxCommand(args ...string) (string, error) {
 	return string(output), err
 }
 
+// 生成256字节随机JWT密钥
+func generateJWTSecret() (string, error) {
+	// 生成256字节的随机数据
+	secretBytes := make([]byte, 256)
+	if _, err := rand.Read(secretBytes); err != nil {
+		return "", err
+	}
+	// 使用base64.RawURLEncoding进行编码
+	return base64.RawURLEncoding.EncodeToString(secretBytes), nil
+}
+
+// 解码JWT密钥
+func decodeJWTSecret(encodedSecret string) ([]byte, error) {
+	return base64.RawURLEncoding.DecodeString(encodedSecret)
+}
+
 // 加载配置文件
 func loadNginxConfig() error {
 	data, err := os.ReadFile("config.json")
@@ -123,7 +140,16 @@ func loadNginxConfig() error {
 	}
 	// 确保JWT密钥存在
 	if config.JWTSecret == "" {
-		config.JWTSecret = "default-secret-key-change-this-in-production"
+		// 生成新的256字节随机JWT密钥
+		newSecret, err := generateJWTSecret()
+		if err != nil {
+			return fmt.Errorf("failed to generate JWT secret: %v", err)
+		}
+		config.JWTSecret = newSecret
+		// 保存新生成的密钥到配置文件
+		if err := saveNginxConfig(); err != nil {
+			return fmt.Errorf("failed to save generated JWT secret: %v", err)
+		}
 	}
 	// 确保用户映射存在
 	if config.Users == nil {
@@ -131,7 +157,12 @@ func loadNginxConfig() error {
 	}
 	// 加载用户数据到全局变量
 	users = config.Users
-	jwtSecret = []byte(config.JWTSecret)
+	// 解码JWT密钥
+	var decodeErr error
+	jwtSecret, decodeErr = decodeJWTSecret(config.JWTSecret)
+	if decodeErr != nil {
+		return fmt.Errorf("failed to decode JWT secret: %v", decodeErr)
+	}
 	return nil
 }
 
@@ -825,12 +856,19 @@ func main() {
 			nginxPath = "/usr/local/nginx"
 		}
 
+		// 生成新的256字节随机JWT密钥
+		jwtSecret, err := generateJWTSecret()
+		if err != nil {
+			fmt.Printf("Failed to generate JWT secret: %v\n", err)
+			return
+		}
+
 		config = Config{
-			NginxPath: nginxPath,                                      // 默认Nginx路径
-			Host:      "0.0.0.0",                                      // 监听IP地址
-			Port:      8080,                                           // 监听端口
-			JWTSecret: "default-secret-key-change-this-in-production", // JWT密钥
-			Users:     make(map[string]User),                          // 存储用户信息
+			NginxPath: nginxPath,             // 默认Nginx路径
+			Host:      "0.0.0.0",             // 监听IP地址
+			Port:      8080,                  // 监听端口
+			JWTSecret: jwtSecret,             // JWT密钥
+			Users:     make(map[string]User), // 存储用户信息
 		}
 		saveNginxConfig()
 	}
