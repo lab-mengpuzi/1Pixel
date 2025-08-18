@@ -47,6 +47,32 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- 页眉 -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-graduation-cap text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-primary">1Pixel</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="index.html" class="bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition-colors duration-200" title="1Pixel">
+                    <i class="fa fa-graduation-cap text-gray-600"></i>
+                    <span class="ml-1 hidden sm:inline">1Pixel</span>
+                </a>
+                <a href="vision.html" class="p-2 rounded-full hover:bg-gray-300 transition-colors duration-200" title="企业视觉识别系统">
+                    <i class="fa fa-camera text-gray-600"></i>
+                    <span class="ml-1 hidden sm:inline">企业视觉识别系统</span>
+                </a>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                    <i class="fa fa-moon-o text-gray-600"></i>
+                </button>
+                <button id="help-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200">
+                    <i class="fa fa-question-circle text-gray-600"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
     <div class="container mx-auto px-4 py-8 max-w-4xl">
         <header class="mb-8 text-center">
             <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-dark mb-2">
