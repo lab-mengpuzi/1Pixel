@@ -532,7 +532,7 @@ C:\\openresty-1.21.4.1-win64\\nginx\\conf\\conf.d\\*.conf</code></pre>
         <li><strong>http块</strong>：配置HTTP服务器的主要区域，包含所有网站的公共配置</li>
         <li><strong>server块</strong>：虚拟主机配置，每个server块对应一个网站</li>
     </ul>
-    
+
     <h4 class="text-md font-medium text-dark">全局块示例</h4>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
 <code>user  root;
@@ -552,9 +552,9 @@ pid        /var/run/nginx.pid;</code></pre>
     include       mime.types;
     default_type  application/octet-stream;
     sendfile        on;
-    
+
     # 其他http级配置...
-    
+
     # 引入站点配置
     include /usr/local/openresty/nginx/conf/conf.d/*.conf;
 }</code></pre>
@@ -567,7 +567,7 @@ pid        /var/run/nginx.pid;</code></pre>
     server_name www.mengpuzi.com;
     root /www/sites/www.mengpuzi.com/index;
     index index.html;
-    
+
     # 其他server级配置...
 }</code></pre>
 </div>`
@@ -583,7 +583,7 @@ pid        /var/run/nginx.pid;</code></pre>
 <code>server {
     # 监听HTTPS端口
     listen 443 ssl http2;
-    
+
     # SSL证书路径
     ssl_certificate /www/sites/www.mengpuzi.com/ssl/fullchain.pem;
     ssl_certificate_key /www/sites/www.mengpuzi.com/ssl/privkey.pem;
@@ -615,23 +615,23 @@ pid        /var/run/nginx.pid;</code></pre>
                     content: `
 <div class="space-y-4">
     <h3 class="text-lg font-semibold text-dark">请求限流配置</h3>
-    
+
     <h4 class="text-md font-medium text-dark">限流区域定义 <span class="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded">http块</span></h4>
     <p class="text-gray-700">在http块中定义限流区域，可被所有server块共享：</p>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
 <code>http {
     # 基于IP的请求频率限制
     limit_req_zone $binary_remote_addr zone=perip_req:10m rate=1r/s;
-    
+
     # 基于服务器的请求频率限制
     limit_req_zone $server_name zone=perserver_req:10m rate=1r/s;
-    
+
     # 基于IP的连接数限制
     limit_conn_zone $binary_remote_addr zone=perip:10m;
-    
+
     # 基于服务器的连接数限制
     limit_conn_zone $server_name zone=perserver:10m;
-    
+
     # 其他配置...
 }</code></pre>
 
@@ -640,7 +640,7 @@ pid        /var/run/nginx.pid;</code></pre>
     <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
 <code>server {
     # 其他配置...
-    
+
     # 连接数限制
     limit_conn perserver 300;  # 服务器最大并发连接数
     limit_conn perip 10;       # 单IP最大并发连接数
@@ -668,33 +668,70 @@ pid        /var/run/nginx.pid;</code></pre>
 <code>http {
     # 启用Gzip压缩
     gzip on;
-    
+
     # 最小压缩文件大小
     gzip_min_length  1k;
-    
+
     # 压缩缓冲区大小
     gzip_buffers     4 16k;
-    
+
     # 支持的HTTP版本
     gzip_http_version 1.1;
-    
+
     # 压缩级别(1-9)，级别越高压缩率越好但CPU消耗越大
     gzip_comp_level 2;
-    
+
     # 需压缩的文件类型
     gzip_types     text/plain application/javascript application/x-javascript 
                    text/javascript text/css application/xml;
-    
+
     # 启用Vary响应头，告知代理服务器缓存压缩和非压缩版本
     gzip_vary on;
-    
+
     # 代理场景下的压缩策略
     gzip_proxied   expired no-cache no-store private auth;
-    
+
     # 禁用旧版IE浏览器的压缩
     gzip_disable   "MSIE [1-6]\.";
 }</code></pre>
     <p class="text-gray-700">Gzip配置在http块中定义后对所有站点生效，也可在特定server块中单独配置。</p>
+</div>`
+                },
+                {
+                    name: 'No Cache',
+                    description: '对静态资源禁用缓存',
+                    content: `
+<div class="space-y-4">
+    <h3 class="text-lg font-semibold text-dark">Nginx缓存控制配置</h3>
+    <p class="text-gray-700">在Web开发中，缓存控制是优化性能和确保内容及时更新的重要手段。Nginx提供了多种方式来控制客户端和代理服务器的缓存行为。</p>
+    
+    <h4 class="text-md font-medium text-dark">缓存控制HTTP头</h4>
+    <p class="text-gray-700">以下HTTP头可用于控制缓存行为：</p>
+    <ul class="list-disc list-inside space-y-2 text-gray-700">
+        <li><strong>Cache-Control</strong>：最常用的缓存控制头，可指定多种缓存指令</li>
+        <li><strong>Pragma</strong>：向后兼容的缓存控制头，主要用于HTTP/1.0</li>
+        <li><strong>Expires</strong>：指定资源的过期时间</li>
+    </ul>
+
+    <h4 class="text-md font-medium text-dark">对静态资源禁用缓存</h4>
+    <p class="text-gray-700">以下配置示例展示了如何对PDF和PNG图片等静态资源禁用缓存，确保用户每次请求都能获取最新版本：</p>
+    <pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto">
+<code>server {
+    # 对静态资源禁用缓存
+    location ~* \.(pdf|png)$ { 
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate"; 
+        add_header Pragma "no-cache"; 
+        add_header Expires "0"; 
+    } 
+}</code></pre>
+    
+    <h4 class="text-md font-medium text-dark">缓存控制指令说明</h4>
+    <ul class="list-disc list-inside space-y-2 text-gray-700">
+        <li><strong>no-store</strong>：禁止缓存任何版本的资源</li>
+        <li><strong>no-cache</strong>：缓存前必须向服务器验证资源有效性</li>
+        <li><strong>must-revalidate</strong>：缓存过期后必须向服务器验证</li>
+        <li><strong>proxy-revalidate</strong>：要求代理缓存过期后必须验证</li>
+    </ul>
 </div>`
                 }
             ]
