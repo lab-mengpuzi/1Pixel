@@ -1,4 +1,4 @@
-# 1Pixel
+# README.md
 
 ## Deploy
 
@@ -6,7 +6,6 @@ Windows 10 -> version
 
 ```plain
 golang-windows 1.21.0
-nginx-windows  1.24.0
 ```
 
 Windows 10 -> run
