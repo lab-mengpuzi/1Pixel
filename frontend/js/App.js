@@ -102,12 +102,12 @@ async function loadTransactions() {
         const transactions = await response.json();
         
         // 更新交易记录列表
-        const transactionsList = document.getElementById('transactionsList');
+        const transactionsContainer = document.getElementById('transactionsContainer');
         const noTransactions = document.getElementById('noTransactions');
         
-        if (transactionsList) {
+        if (transactionsContainer) {
             // 清空现有列表
-            transactionsList.innerHTML = '';
+            transactionsContainer.innerHTML = '';
             
             // 检查transactions是否为null或undefined
             if (!transactions || transactions.length === 0) {
@@ -121,23 +121,62 @@ async function loadTransactions() {
                     noTransactions.classList.add('hidden');
                 }
                 
-                // 添加交易记录到列表
+                // 添加交易记录到容器
                 transactions.forEach(transaction => {
-                    const row = document.createElement('tr');
+                    const card = document.createElement('div');
+                    card.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow duration-200';
                     
-                    row.innerHTML = `
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${formatFullDateTime(new Date(transaction.transaction_time))}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${transaction.our_bank_account_name || '-'}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${transaction.counterparty_alias || '-'}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${transaction.our_bank_name || '-'}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${transaction.counterparty_bank || '-'}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-danger">${formatCurrency(transaction.expense_amount)}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-success">${formatCurrency(transaction.income_amount)}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium ${transaction.balance >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(transaction.balance)}</td>
-                        <td class="px-4 py-3 text-sm text-gray-500">${transaction.note || '-'}</td>
+                    // 根据余额确定卡片边框颜色
+                    let borderColor = 'border-green-200';
+                    if (transaction.balance < 0) {
+                        borderColor = 'border-red-200';
+                    }
+                    card.classList.add(borderColor);
+                    
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="text-sm font-medium text-gray-900">${formatFullDateTime(new Date(transaction.transaction_time))}</div>
+                            <div class="text-sm font-medium ${transaction.balance >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                余额: ${formatCurrency(transaction.balance)}
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                                <span class="text-gray-500">己方户名:</span>
+                                <div class="font-medium">${transaction.our_bank_account_name || '-'}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">对手方:</span>
+                                <div class="font-medium">${transaction.counterparty_alias || '-'}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">己方银行:</span>
+                                <div class="font-medium">${transaction.our_bank_name || '-'}</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">对手银行:</span>
+                                <div class="font-medium">${transaction.counterparty_bank || '-'}</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between mt-3 pt-2 border-t border-gray-200">
+                            <div class="text-sm">
+                                <span class="text-gray-500">支出:</span>
+                                <span class="font-medium text-red-600 ml-1">${formatCurrency(transaction.expense_amount)}</span>
+                            </div>
+                            <div class="text-sm">
+                                <span class="text-gray-500">收入:</span>
+                                <span class="font-medium text-green-600 ml-1">${formatCurrency(transaction.income_amount)}</span>
+                            </div>
+                        </div>
+                        ${transaction.note ? `
+                        <div class="mt-2 pt-2 border-t border-gray-200">
+                            <span class="text-gray-500 text-sm">用途:</span>
+                            <div class="text-sm text-gray-700 mt-1">${transaction.note}</div>
+                        </div>
+                        ` : ''}
                     `;
                     
-                    transactionsList.appendChild(row);
+                    transactionsContainer.appendChild(card);
                 });
             }
         }
