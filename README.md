@@ -10,7 +10,7 @@ golang-windows 1.21.0
 
 Windows 10 -> run
 
-```cmd
+```powershell
 C:\Users\Administrator\Downloads\1Pixel>REM Install Dependency
 C:\Users\Administrator\Downloads\1Pixel>go mod tidy
 C:\Users\Administrator\Downloads\1Pixel>
@@ -20,7 +20,7 @@ C:\Users\Administrator\Downloads\1Pixel>go run main.go
 
 Windows 10 -> build
 
-```cmd
+```powershell
 C:\Users\Administrator\Downloads\1Pixel>REM windows build
 C:\Users\Administrator\Downloads\1Pixel>go build -o 1Pixel.exe main.go
 C:\Users\Administrator\Downloads\1Pixel>
