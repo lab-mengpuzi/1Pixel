@@ -31,14 +31,27 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadBalance() {
     try {
         const response = await fetch('/api/market/balance');
-        const data = await response.json();
-        document.getElementById('balance').textContent = `¥${parseFloat(data.amount).toFixed(2)}`;
+        if (!response.ok) {
+            throw new Error('Failed to load balance');
+        }
         
-        // 更新时间戳
-        const now = new Date();
-        document.getElementById('lastUpdated').textContent = `最后更新: ${now.toLocaleTimeString()}`;
+        const balance = await response.json();
+        
+        // 更新余额显示
+        const balanceAmount = document.getElementById('balanceAmount');
+        if (balanceAmount) {
+            balanceAmount.textContent = formatCurrency(balance.amount);
+        }
+        
+        // 更新最后更新时间
+        const lastUpdated = document.getElementById('lastUpdated');
+        if (lastUpdated) {
+            const date = new Date(balance.updated_at);
+            lastUpdated.textContent = `最后更新: ${formatDateTime(date)}`;
+        }
     } catch (error) {
-        console.error('加载余额失败:', error);
+        console.error('Error loading balance:', error);
+        showToast('加载余额失败', 'error');
     }
 }
 
@@ -514,4 +527,40 @@ function showNotification(message, type = 'success') {
     setTimeout(() => {
         notification.classList.add('translate-y-20');
     }, 3000);
+}
+
+// 格式化日期 (YYYY-MM-DD)
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// 格式化日期时间 (YYYY-MM-DD HH:MM)
+function formatDateTime(date) {
+    const formattedDate = formatDate(date);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${formattedDate} ${hours}:${minutes}`;
+}
+
+// 格式化货币，添加货币符号
+function formatCurrency(amount) {
+    const currencySymbol = '¥';
+    let formattedAmount = '';
+
+    if (amount > 0) {
+        formattedAmount = `${formatNumberWithCommas(amount.toFixed(2))}`;
+    } else if (amount === 0) {
+        formattedAmount = '-';
+    } else {
+        formattedAmount = `(${formatNumberWithCommas(amount.toFixed(2))})`;
+    }
+    return `${currencySymbol} ${formattedAmount}`;
+}
+
+// 格式化数字，添加千位分隔符
+function formatNumberWithCommas(number) {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
