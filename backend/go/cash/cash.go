@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -356,70 +355,4 @@ func AddTransaction(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(t)
-}
-
-// 删除交易记录
-func DeleteTransaction(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	if r.Method != "DELETE" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// 从URL路径中获取ID
-	idStr := r.URL.Path[len("/api/cash/transactions/delete/"):]
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid transaction ID", http.StatusBadRequest)
-		return
-	}
-
-	// 获取要删除的交易记录的信息
-	var expenseAmount, incomeAmount float64
-	var transactionTime time.Time
-	err = db.QueryRow("SELECT expense_amount, income_amount, transaction_time FROM transactions WHERE id = ?", id).Scan(&expenseAmount, &incomeAmount, &transactionTime)
-	if err != nil {
-		http.Error(w, "Transaction not found", http.StatusNotFound)
-		return
-	}
-
-	// 删除交易记录
-	_, err = db.Exec("DELETE FROM transactions WHERE id = ?", id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// 重新计算所有余额
-	// 获取所有交易记录，按交易时间升序排列
-	rows, err := db.Query("SELECT expense_amount, income_amount FROM transactions ORDER BY transaction_time ASC")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var newBalance float64 = 0
-
-	// 按时间顺序重新计算余额
-	for rows.Next() {
-		var expense, income float64
-		scanErr := rows.Scan(&expense, &income)
-		if scanErr != nil {
-			http.Error(w, scanErr.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// 计算余额：当前余额 = 上一条记录的余额 + 收入金额 - 支出金额
-		newBalance = newBalance + income - expense
-	}
-
-	// 更新余额表
-	err = UpdateBalance(db, newBalance)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Transaction deleted successfully")
 }

@@ -135,11 +135,6 @@ async function loadTransactions() {
                         <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-success">${formatCurrency(transaction.income_amount)}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm font-medium ${transaction.balance >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(transaction.balance)}</td>
                         <td class="px-4 py-3 text-sm text-gray-500">${transaction.note || '-'}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                            <button onclick="deleteTransaction(${transaction.id})" class="text-danger hover:text-red-700">
-                                <i class="fa fa-trash"></i> 删除
-                            </button>
-                        </td>
                     `;
                     
                     transactionsList.appendChild(row);
@@ -194,32 +189,6 @@ async function handleFormSubmit(event) {
     } catch (error) {
         console.error('Error adding transaction:', error);
         showToast('添加交易记录失败', 'error');
-    }
-}
-
-// 删除交易记录
-async function deleteTransaction(id) {
-    if (!confirm('确定要删除这条交易记录吗？')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/cash/transactions/delete/${id}`, {
-            method: 'DELETE'
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to delete transaction');
-        }
-        
-        // 刷新余额和交易记录
-        loadBalance();
-        loadTransactions();
-        
-        showToast('交易记录删除成功', 'success');
-    } catch (error) {
-        console.error('Error deleting transaction:', error);
-        showToast('删除交易记录失败', 'error');
     }
 }
 
