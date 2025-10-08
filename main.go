@@ -62,11 +62,6 @@ func addTransaction(w http.ResponseWriter, r *http.Request) {
 	cash.AddTransaction(db, w, r)
 }
 
-// 删除交易记录
-func deleteTransaction(w http.ResponseWriter, r *http.Request) {
-	cash.DeleteTransaction(db, w, r)
-}
-
 // 获取市场参数
 func getMarketParams(w http.ResponseWriter, r *http.Request) {
 	market.GetMarketParams(db, w, r)
@@ -162,7 +157,6 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
-	http.HandleFunc("/api/cash/transactions/delete", deleteTransaction)
 
 	// 市场相关路由
 	http.HandleFunc("/api/market/params", getMarketParams)
