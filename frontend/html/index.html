@@ -55,6 +55,10 @@
                     <i class="fa fa-shopping-cart text-gray-600"></i>
                     <span class="ml-1 hidden sm:inline">市场</span>
                 </a>
+                <a href="dutch_auction.html" class="bg-purple-600 p-2 rounded-full hover:bg-purple-700 transition-colors duration-200" title="荷兰钟拍卖系统">
+                    <i class="fa fa-gavel text-white"></i>
+                    <span class="ml-1 hidden sm:inline">拍卖</span>
+                </a>
             </div>
         </div>
     </header>
@@ -154,28 +158,11 @@
                     </button>
                 </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">交易时间</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">己方银行户名</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">对手方别名</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">己方开户行</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">对手方开户行</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支出金额（元）</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">收入金额（元）</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">己方账户余额（元）</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">附言（用途）</th>
-                        </tr>
-                    </thead>
-                    <tbody id="transactionsList" class="bg-white divide-y divide-gray-200">
-                        <!-- 交易记录将通过JavaScript动态添加 -->
-                    </tbody>
-                </table>
-                <div id="noTransactions" class="text-center py-8 text-gray-500 hidden">
-                    暂无交易记录
-                </div>
+            <div id="transactionsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 交易记录将通过JavaScript动态添加 -->
+            </div>
+            <div id="noTransactions" class="text-center py-8 text-gray-500 hidden">
+                暂无交易记录
             </div>
         </section>
     </main>
