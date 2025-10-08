@@ -48,16 +48,16 @@
                 <h1 class="text-xl font-bold text-gray-800">市场页 - 动态供需平衡定价系统</h1>
             </div>
             <div class="flex items-center space-x-4">
-                <a href="index.html" class="bg-gray-200 p-2 rounded-full hover:bg-gray-300 transition-colors duration-200" title="现金余额跟踪系统">
-                    <i class="fa fa-money text-gray-600"></i>
+                <a href="index.html" class="bg-white hover:bg-gray-300 p-2 rounded-full transition-colors duration-200" title="现金余额跟踪系统">
+                    <i class="fa fa-home text-gray-600"></i>
                     <span class="ml-1 hidden sm:inline">首页</span>
                 </a>
-                <a href="market.html" class="bg-primary p-2 rounded-full hover:bg-blue-600 transition-colors duration-200" title="市场页">
-                    <i class="fa fa-shopping-cart text-white"></i>
+                <a href="market.html" class="bg-primary hover:bg-blue-600 p-2 rounded-full transition-colors duration-200" title="市场页">
+                    <i class="fa fa-shopping-cart text-gray-600"></i>
                     <span class="ml-1 hidden sm:inline">市场</span>
                 </a>
-                <a href="dutch_auction.html" class="bg-purple-600 p-2 rounded-full hover:bg-purple-700 transition-colors duration-200" title="荷兰钟拍卖系统">
-                    <i class="fa fa-gavel text-white"></i>
+                <a href="dutch_auction.html" class="bg-white hover:bg-gray-300 p-2 rounded-full transition-colors duration-200" title="荷兰钟拍卖系统">
+                    <i class="fa fa-gavel text-gray-600"></i>
                     <span class="ml-1 hidden sm:inline">拍卖</span>
                 </a>
             </div>
@@ -105,7 +105,7 @@
                 </div>
             </div>
             <div class="flex justify-end mt-4">
-                <button id="saveMarketParams" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200">
+                <button id="saveMarketParams" class="w-full px-3 py-1 bg-primary text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200">
                     保存参数
                 </button>
             </div>
@@ -122,7 +122,7 @@
                         <p class="text-sm text-gray-600">饱食度减少: <span class="font-medium">1</span></p>
                         <p class="text-sm text-gray-600">消耗时间: <span class="font-medium">1秒</span></p>
                     </div>
-                    <button id="makeApple" class="w-full px-4 py-2 bg-success text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 transition-colors duration-200">
+                    <button id="makeApple" class="w-full px-3 py-1 bg-success text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 transition-colors duration-200">
                         制作苹果
                     </button>
                 </div>
@@ -133,7 +133,7 @@
                         <p class="text-sm text-gray-600">饱食度减少: <span class="font-medium">2</span></p>
                         <p class="text-sm text-gray-600">消耗时间: <span class="font-medium">2秒</span></p>
                     </div>
-                    <button id="makeWood" class="w-full px-4 py-2 bg-success text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 transition-colors duration-200">
+                    <button id="makeWood" class="w-full px-3 py-1 bg-success text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 transition-colors duration-200">
                         制作木材
                     </button>
                 </div>
@@ -150,7 +150,7 @@
                         <span id="backpackAppleCount" class="text-lg font-bold text-primary">0</span>
                     </div>
                     <div class="flex space-x-2">
-                        <button id="sellApple" class="flex-1 px-3 py-1 bg-success text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 transition-colors duration-200">
+                        <button id="sellApple" class="w-full px-3 py-1 bg-success text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 transition-colors duration-200">
                             卖出
                         </button>
                     </div>
@@ -161,7 +161,7 @@
                         <span id="backpackWoodCount" class="text-lg font-bold text-primary">0</span>
                     </div>
                     <div class="flex space-x-2">
-                        <button id="sellWood" class="flex-1 px-3 py-1 bg-success text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 transition-colors duration-200">
+                        <button id="sellWood" class="w-full px-3 py-1 bg-success text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 transition-colors duration-200">
                             卖出
                         </button>
                     </div>
@@ -197,7 +197,7 @@
                         市场状态: <span id="appleMarketStatus" class="font-medium">稳定</span>
                     </div>
                     <div class="flex space-x-2">
-                        <button id="buyApple" class="flex-1 px-3 py-1 bg-primary text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200">
+                        <button id="buyApple" class="w-full px-3 py-1 bg-primary text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200">
                             买入
                         </button>
                     </div>
@@ -219,7 +219,7 @@
                         市场状态: <span id="woodMarketStatus" class="font-medium">稳定</span>
                     </div>
                     <div class="flex space-x-2">
-                        <button id="buyWood" class="flex-1 px-3 py-1 bg-primary text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200">
+                        <button id="buyWood" class="w-full px-3 py-1 bg-primary text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors duration-200">
                             买入
                         </button>
                     </div>
